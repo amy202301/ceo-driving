@@ -20,11 +20,10 @@
 
 ```
 CEO驾驶舱/
-├── docs/                       # ★ 部署用：轻量双文件版（GitHub Pages 源目录 /docs）
-│   ├── index.html              #   入口页（107KB，引用本地 echarts.min.js）
-│   └── echarts.min.js          #   本地 ECharts，零 CDN 依赖
+├── index.html                  # ★ 部署入口页（GitHub Pages 根目录直接托管，107KB）
+├── echarts.min.js              #   本地 ECharts，零 CDN 依赖
 ├── CEO驾驶舱-演示版.html         # 单文件离线版（1.1MB，内联 ECharts，双击即用，适合微信/U盘发送）
-├── demo/                       # 开发版（同 serve，轻量）
+├── README.md / .nojekyll       #   说明文档 + 关闭 Jekyll
 └── 交付手册/                    # 销售交付 SOP、视频脚本、数据模板 CSV
 ```
 
@@ -34,7 +33,7 @@ CEO驾驶舱/
 
 **方式二（本地服务）**：
 ```bash
-cd docs
+cd CEO驾驶舱
 python -m http.server 8000
 # 浏览器打开 http://127.0.0.1:8000/
 ```
@@ -42,11 +41,11 @@ python -m http.server 8000
 
 ## 部署到公网（GitHub Pages）
 
-本仓库的 `docs/` 目录就是可直接托管的静态站点（也是 GitHub Pages 的源目录）：
+本仓库根目录的 `index.html` 就是可直接托管的静态站点，GitHub Pages 已指向仓库根目录（`/`）：
 
-1. 把本仓库推到你的 GitHub（已含 `docs/`）。
-2. 仓库 → Settings → Pages → Source 选 `main` 分支、`/docs` 目录 → Save。
-3. 几分钟后获得 `https://<你的用户名>.github.io/<仓库名>/` 公网链接，直接发给客户。
+1. 把本仓库推到你的 GitHub（已含根目录 `index.html` + `echarts.min.js`）。
+2. 仓库 → Settings → Pages → Source 已是 `main` 分支、`/ (root)` 目录（若不是，手动选一下）。
+3. 获得 `https://<你的用户名>.github.io/<仓库名>/` 公网链接，直接发给客户。
 
 > 也可改用 `CEO驾驶舱-演示版.html` 单文件部署（更省事，但需手动上传）。
 
