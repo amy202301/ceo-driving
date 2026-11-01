@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CEO 驾驶舱 · 演示系统</title>
+<script src="echarts.min.js"></script>
+<script>window.echarts||document.write('<scr'+'ipt src="https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"><\/scr'+'ipt>');</script>
+<style>
+:root{
+  --bg:#070A12;
+  --bg2:#0A101C;
+  --panel:rgba(18,28,47,.72);
+  --panel2:rgba(13,21,36,.8);
+  --line:rgba(88,160,210,.13);
+  --line2:rgba(88,160,210,.28);
+  --cyan:#22D3EE;
+  --teal:#2DD4BF;
+  --gold:#F0B95C;
+  --red:#F0555A;
+  --amber:#F5A623;
+  --green:#34D399;
+  --tx:#DCE6F2;
+  --tx2:#8FA3BC;
+  --tx3:#5B6E88;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--tx);overflow:hidden;font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 12% -10%,rgba(34,211,238,.09),transparent 70%),
+    radial-gradient(800px 480px at 92% 8%,rgba(240,185,92,.055),transparent 70%);
+}
+.app{position:relative;z-index:1;display:grid;grid-template-columns:198px 1fr;height:100vh}
+
+.side{background:rgba(8,13,23,.86);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px 14px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px}
+.brand-mark{width:32px;height:32px;border-radius:9px;border:1px solid rgba(34,211,238,.35);display:flex;align-items:center;justify-content:center;background:rgba(34,211,238,.07)}
+.brand-mark svg{width:17px;height:17px;stroke:var(--cyan);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.brand-name{font-size:14px;font-weight:500;letter-spacing:.4px}
+.brand-sub{font-size:11px;color:var(--tx3);margin-top:2px}
+
+.seg{display:grid;grid-template-columns:repeat(2,1fr);gap:3px;background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:9px;padding:3px;margin:0 6px 10px}
+.seg-i:last-child{grid-column:span 2}
+.seg-i{padding:7px 0;font-size:11px;color:var(--tx3);background:none;border:0;border-radius:6px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+.seg-i:hover{color:var(--tx2)}
+.seg-i.active{background:rgba(34,211,238,.15);color:var(--cyan)}
+.seg-hint{font-size:10px;color:var(--tx3);text-align:center;margin:-6px 0 14px;letter-spacing:.2px}
+
+.nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:9px;padding:10px 10px;border-radius:8px;
+  background:none;border:0;color:var(--tx2);font-size:13px;cursor:pointer;
+  font-family:inherit;text-align:left;transition:background .16s,color .16s;position:relative;
+}
+.nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:0 0 16px}
+.nav-item:hover{background:rgba(255,255,255,.035);color:var(--tx)}
+.nav-item.active{background:rgba(34,211,238,.1);color:var(--cyan)}
+.nav-item.active::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--cyan)}
+.nav-tag{margin-left:auto;font-size:10px;color:var(--tx3);font-family:var(--mono)}
+.nav-item.active .nav-tag{color:rgba(34,211,238,.7)}
+
+.side-foot{font-size:10.5px;color:var(--tx3);padding:10px 8px 0;border-top:1px solid var(--line);line-height:1.6}
+
+.main{display:flex;flex-direction:column;min-width:0;height:100vh}
+.top{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line)}
+.top-left{display:flex;align-items:baseline;gap:12px}
+.top h1{font-size:16px;font-weight:500;letter-spacing:.3px}
+.top-sub{font-size:12px;color:var(--tx3)}
+.top-right{display:flex;align-items:center;gap:8px}
+.pill{font-size:11.5px;color:var(--tx2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:rgba(255,255,255,.02)}
+.pill b{color:var(--cyan);font-family:var(--mono);font-weight:500;margin-left:4px}
+.pill.demo{color:var(--gold);border-color:rgba(240,185,92,.3);background:rgba(240,185,92,.06)}
+
+.scroll{flex:1;overflow-y:auto;padding:20px 24px 28px}
+.scroll::-webkit-scrollbar{width:9px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(88,160,210,.18);border-radius:9px;border:2px solid transparent;background-clip:content-box}
+.scroll::-webkit-scrollbar-track{background:transparent}
+
+.view{display:none;animation:fade .26s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.card{background:linear-gradient(180deg,rgba(21,33,55,.7),rgba(12,19,33,.72));border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
+.card-t{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px}
+.card-t::before{content:"";width:2px;height:12px;border-radius:2px;background:var(--cyan);opacity:.85}
+.card-note{font-size:11px;color:var(--tx3)}
+
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-2-1{grid-template-columns:1.62fr 1fr}
+.g1-2{grid-template-columns:1fr 1.5fr}
+.mt14{margin-top:14px}
+
+.kpi{background:linear-gradient(180deg,rgba(21,33,55,.7),rgba(12,19,33,.72));border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+.kpi-l{font-size:11.5px;color:var(--tx3);display:flex;align-items:center;gap:6px}
+.kpi-l i{width:5px;height:5px;border-radius:50%;background:var(--cyan);display:block}
+.kpi-v{font-family:var(--mono);font-size:29px;font-weight:500;letter-spacing:-.5px;margin:9px 0 5px;line-height:1}
+.kpi-v small{font-size:13px;color:var(--tx2);font-weight:400;margin-left:3px;font-family:inherit}
+.kpi-d{font-size:11.5px;color:var(--tx3)}
+.up{color:var(--red)}
+.down{color:var(--green)}
+.warnc{color:var(--amber)}
+.goldc{color:var(--gold)}
+.cyanc{color:var(--cyan)}
+
+table.tl{width:100%;border-collapse:collapse}
+table.tl th{font-size:11px;color:var(--tx3);font-weight:400;text-align:left;padding:0 10px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tl td{font-size:12.5px;padding:11px 10px;border-bottom:1px solid rgba(88,160,210,.07);vertical-align:middle;color:var(--tx)}
+table.tl tr:last-child td{border-bottom:0}
+table.tl tr:hover td{background:rgba(34,211,238,.025)}
+td.tnum{font-family:var(--mono);font-size:12.5px;color:var(--tx2)}
+
+.lvl{display:inline-block;font-size:10.5px;padding:2.5px 7px;border-radius:5px;font-weight:500;white-space:nowrap}
+.lvl.h{color:#FF8B8E;background:rgba(240,85,90,.13);border:1px solid rgba(240,85,90,.3)}
+.lvl.m{color:#FFC46B;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.28)}
+.lvl.l{color:var(--tx2);background:rgba(140,160,190,.08);border:1px solid var(--line)}
+
+.chip{display:inline-block;font-size:10.5px;padding:2.5px 8px;border-radius:5px;border:1px solid var(--line);color:var(--tx2);white-space:nowrap}
+.chip.red{color:#FF8B8E;border-color:rgba(240,85,90,.32);background:rgba(240,85,90,.1)}
+.chip.amber{color:#FFC46B;border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.1)}
+.chip.green{color:#6FE7B7;border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.1)}
+.chip.cyan{color:var(--cyan);border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.08)}
+
+.bar-wrap{height:6px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden;min-width:60px}
+.bar{height:100%;border-radius:6px;background:linear-gradient(90deg,rgba(34,211,238,.55),var(--cyan))}
+.bar.gold{background:linear-gradient(90deg,rgba(240,185,92,.5),var(--gold))}
+.bar.red{background:linear-gradient(90deg,rgba(240,85,90,.5),var(--red))}
+.bar.green{background:linear-gradient(90deg,rgba(52,211,153,.5),var(--green))}
+
+.chart{width:100%}
+
+.sug{border:1px solid var(--line);border-radius:12px;padding:16px;background:rgba(14,23,39,.6);position:relative;overflow:hidden}
+.sug::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--amber)}
+.sug.done::before{background:var(--tx3)}
+.sug.done{opacity:.5}
+.sug-h{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.sug-idx{width:22px;height:22px;border-radius:6px;border:1px solid rgba(245,166,35,.35);color:var(--amber);font-family:var(--mono);font-size:11px;display:flex;align-items:center;justify-content:center;flex:0 0 22px}
+.sug-t{font-size:13.5px;font-weight:500}
+.sug-m{font-size:12px;color:var(--tx2);line-height:1.85;margin-bottom:12px}
+.sug-m b{color:var(--tx);font-weight:500}
+.sug-a{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:inherit;font-size:12px;padding:6.5px 14px;border-radius:7px;border:1px solid var(--line2);background:rgba(34,211,238,.07);color:var(--cyan);cursor:pointer;transition:.16s}
+.btn:hover{background:rgba(34,211,238,.16)}
+.btn.ghost{background:none;color:var(--tx2);border-color:var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.04);color:var(--tx)}
+.btn:disabled{opacity:.4;cursor:default}
+
+.cmd-box{border:1px solid var(--line2);border-radius:12px;background:rgba(14,23,39,.7);padding:4px}
+.cmd-in{display:flex;gap:10px;padding:8px}
+.cmd-in input{flex:1;background:none;border:0;outline:0;color:var(--tx);font-family:inherit;font-size:13.5px;padding:10px 8px}
+.cmd-in input::placeholder{color:var(--tx3)}
+.btn-primary{background:rgba(34,211,238,.14);border:1px solid rgba(34,211,238,.4);color:var(--cyan);padding:10px 20px;border-radius:8px;font-family:inherit;font-size:13px;cursor:pointer;transition:.16s}
+.btn-primary:hover{background:rgba(34,211,238,.24)}
+
+.task{border:1px solid var(--line);border-radius:10px;padding:13px 15px;background:rgba(14,23,39,.55);display:flex;align-items:flex-start;gap:13px}
+.task-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 30px;background:rgba(34,211,238,.09);border:1px solid rgba(34,211,238,.22)}
+.task-ic svg{width:15px;height:15px;stroke:var(--cyan);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.task-b{flex:1;min-width:0}
+.task-t{font-size:13px;font-weight:500;margin-bottom:5px}
+.task-m{font-size:11.5px;color:var(--tx3);line-height:1.8}
+.task-m span{color:var(--tx2)}
+
+.talk{border-left:2px solid rgba(34,211,238,.22);padding-left:14px;display:flex;flex-direction:column;gap:11px}
+.msg{font-size:12.5px;line-height:1.7;color:var(--tx2)}
+.msg b{color:var(--cyan);font-weight:500;font-family:var(--mono);font-size:11.5px;margin-right:8px}
+.msg .who{color:var(--tx);font-weight:500;margin-right:6px}
+
+.src{border:1px solid var(--line);border-radius:10px;padding:14px 15px;background:rgba(14,23,39,.55);display:flex;align-items:center;gap:12px}
+.src-dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px}
+.src-dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.14)}
+.src-dot.off{background:var(--tx3)}
+.src-dot.wait{background:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.13)}
+
+.toast{position:fixed;left:50%;bottom:36px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:rgba(16,26,44,.97);border:1px solid rgba(34,211,238,.35);color:var(--tx);
+  padding:11px 20px;border-radius:9px;font-size:12.5px;transition:.25s;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3)}
+.legend i{display:inline-block;width:6px;height:6px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.fallback{padding:34px 16px;text-align:center;font-size:12px;color:var(--tx3);border:1px dashed var(--line);border-radius:10px}
+
+.hero-card{border-color:rgba(240,185,92,.22)!important;background:linear-gradient(180deg,rgba(240,185,92,.05),rgba(12,19,33,.7))!important}
+.hero-card b{color:var(--tx);font-weight:500}
+.hero-card .r{color:#FF8B8E;font-weight:500}
+
+.bell{position:relative;width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.16s;margin-left:2px}
+.bell:hover{background:rgba(34,211,238,.09);border-color:var(--line2)}
+.bell svg{width:16px;height:16px;stroke:var(--tx2);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bell:hover svg{stroke:var(--cyan)}
+.bell-dot{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-family:var(--mono);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #080D17}
+.bell-dot.hide{display:none}
+@keyframes bellpop{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+.bell-dot.pop{animation:bellpop .42s ease}
+
+.mask{position:fixed;inset:0;background:rgba(4,7,13,.62);opacity:0;pointer-events:none;transition:.22s;z-index:50}
+.mask.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:396px;background:#0A1020;border-left:1px solid var(--line2);transform:translateX(101%);transition:transform .27s cubic-bezier(.4,0,.2,1);z-index:51;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.45)}
+.drawer.show{transform:none}
+.drawer-h{flex:0 0 56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line)}
+.drawer-b{flex:1;overflow-y:auto;padding:10px 12px 20px}
+.drawer-b::-webkit-scrollbar{width:8px}
+.drawer-b::-webkit-scrollbar-thumb{background:rgba(88,160,210,.2);border-radius:8px}
+.drawer-f{flex:0 0 52px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--tx3)}
+
+.nt-day{font-size:11px;color:var(--tx3);padding:14px 8px 8px;letter-spacing:.5px}
+.nt{display:flex;gap:11px;padding:12px 10px;border-radius:9px;cursor:pointer;transition:.14s;position:relative}
+.nt:hover{background:rgba(255,255,255,.035)}
+.nt-ic{width:29px;height:29px;border-radius:8px;flex:0 0 29px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+.nt-ic svg{width:13px;height:13px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nt-ic.red{background:rgba(240,85,90,.1);border-color:rgba(240,85,90,.28)}
+.nt-ic.red svg{stroke:#FF8B8E}
+.nt-ic.amber{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.26)}
+.nt-ic.amber svg{stroke:#FFC46B}
+.nt-ic.cyan{background:rgba(34,211,238,.09);border-color:rgba(34,211,238,.26)}
+.nt-ic.cyan svg{stroke:var(--cyan)}
+.nt-ic.green{background:rgba(52,211,153,.09);border-color:rgba(52,211,153,.26)}
+.nt-ic.green svg{stroke:#6FE7B7}
+.nt-b{flex:1;min-width:0;padding-right:12px}
+.nt-t{font-size:12.5px;margin-bottom:4px;line-height:1.5;color:var(--tx)}
+.nt-m{font-size:11px;color:var(--tx3);line-height:1.65}
+.nt-time{font-size:10.5px;color:var(--tx3);font-family:var(--mono);white-space:nowrap;padding-top:2px}
+.nt.unread .nt-t{font-weight:500}
+.nt.unread::after{content:"";position:absolute;right:3px;top:18px;width:5px;height:5px;border-radius:50%;background:var(--cyan)}
+
+.sw{width:34px;height:19px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid var(--line);position:relative;cursor:pointer;transition:.18s;flex:0 0 34px}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#7C8CA3;transition:.18s}
+.sw.on{background:rgba(34,211,238,.24);border-color:rgba(34,211,238,.5)}
+.sw.on::after{left:17px;background:var(--cyan)}
+
+.rule{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid rgba(88,160,210,.07)}
+.rule:last-child{border-bottom:0}
+.rule-b{flex:1;min-width:0}
+.rule-t{font-size:12.5px;margin-bottom:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rule-m{font-size:11px;color:var(--tx3);line-height:1.6}
+.rule-who{font-size:11px;color:var(--tx2);white-space:nowrap;text-align:right;line-height:1.6}
+
+.phone{width:286px;margin:0 auto;border-radius:28px;border:1px solid rgba(88,160,210,.28);background:#131A2A;padding:9px;box-shadow:0 22px 54px rgba(0,0,0,.55)}
+.phone-notch{height:16px;display:flex;justify-content:center;align-items:flex-start}
+.phone-notch i{width:64px;height:5px;border-radius:4px;background:rgba(255,255,255,.16);display:block}
+.phone-scr{background:#F2F3F5;border-radius:20px;overflow:hidden;padding-bottom:14px}
+.wx-top{background:#EDEEF0;padding:11px 14px;text-align:center;font-size:12px;color:#4A5058;border-bottom:1px solid #E2E4E7;font-weight:500}
+.wx-chat{padding:14px 12px 0;display:flex;gap:9px}
+.wx-av{width:32px;height:32px;border-radius:6px;flex:0 0 32px;background:#1B7CE6;color:#fff;font-size:10.5px;display:flex;align-items:center;justify-content:center;font-weight:500}
+.wx-name{font-size:10.5px;color:#8A9099;margin-bottom:5px}
+.wx-card{background:#fff;border-radius:8px;padding:13px 13px 11px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.wx-h{font-size:12.5px;color:#1A1D21;font-weight:500;margin-bottom:3px}
+.wx-sub{font-size:10.5px;color:#9AA0A8;margin-bottom:10px}
+.wx-row{display:flex;justify-content:space-between;font-size:11px;color:#4A5058;padding:5px 0}
+.wx-row b{font-weight:500;color:#1A1D21;font-family:var(--mono)}
+.wx-tag{display:inline-block;font-size:9.5px;padding:1px 5px;border-radius:3px;background:#FDECEC;color:#D9434B;margin-left:5px}
+.wx-line{height:1px;background:#EEEFF1;margin:9px 0}
+.wx-btn{margin-top:11px;text-align:center;font-size:11.5px;color:#1B7CE6;border:1px solid #DCE3EC;border-radius:6px;padding:8px;background:#FAFBFC}
+.wx-time{font-size:9.5px;color:#B0B5BC;text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 3l7 4v6c0 4-3 6.6-7 8-4-1.4-7-4-7-8V7l7-4z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">CEO 驾驶舱</div>
+        <div class="brand-sub" id="brandSub">星海科技 · 68 人</div>
+      </div>
+    </div>
+
+    <div class="seg" id="seg">
+      <button class="seg-i active" data-p="trade">商贸服务</button>
+      <button class="seg-i" data-p="mfg">制造业</button>
+      <button class="seg-i" data-p="shop">门店零售</button>
+      <button class="seg-i" data-p="estate">房地产</button>
+      <button class="seg-i" data-p="food">餐饮连锁</button>
+    </div>
+    <div class="seg-hint">同一套系统 · 换行业只换指标</div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-view="brief">
+        <svg viewBox="0 0 24 24"><path d="M12 4v11M8 8.5l4-4.5 4 4.5M5 19h14"/></svg>
+        今日简报<span class="nav-tag">推</span>
+      </button>
+      <button class="nav-item" data-view="overview">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+        经营总览<span class="nav-tag">看</span>
+      </button>
+      <button class="nav-item" data-view="decide">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.2l2.5 2.5 4.7-5.2"/></svg>
+        决策建议<span class="nav-tag">决</span>
+      </button>
+      <button class="nav-item" data-view="order">
+        <svg viewBox="0 0 24 24"><path d="M4 12h14M13 7l5 5-5 5"/></svg>
+        指令中心<span class="nav-tag">令</span>
+      </button>
+      <button class="nav-item" data-view="night">
+        <svg viewBox="0 0 24 24"><path d="M20.2 14.6A8.2 8.2 0 1 1 9.6 3.9a6.5 6.5 0 0 0 10.6 10.7z"/></svg>
+        黑灯工厂<span class="nav-tag">夜</span>
+      </button>
+      <button class="nav-item" data-view="source">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></svg>
+        数据接入<span class="nav-tag">BI</span>
+      </button>
+      <button class="nav-item" data-view="notice">
+        <svg viewBox="0 0 24 24"><path d="M6.5 16V10.5a5.5 5.5 0 0 1 11 0V16l1.6 2.2H4.9L6.5 16z"/><path d="M10.2 20.4a2 2 0 0 0 3.6 0"/></svg>
+        通知推送<span class="nav-tag">提醒</span>
+      </button>
+    </nav>
+
+    <div class="side-foot">演示模式<br>数据为虚构样本</div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="top-left">
+        <h1 id="pageTitle">今日简报</h1>
+        <span class="top-sub" id="pageSub">10月30日 星期五 · 早上好，陈总</span>
+      </div>
+      <div class="top-right">
+        <div class="pill">公司健康指数 <b id="healthBadge">76</b></div>
+        <div class="pill">数据更新 09:00</div>
+        <div class="pill demo">演示数据</div>
+        <button class="bell" id="bellBtn" title="通知中心">
+          <svg viewBox="0 0 24 24"><path d="M6.5 16V10.5a5.5 5.5 0 0 1 11 0V16l1.6 2.2H4.9L6.5 16z"/><path d="M10.2 20.4a2 2 0 0 0 3.6 0"/></svg>
+          <span class="bell-dot" id="bellDot">3</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="scroll" id="scroll">
+
+      <section class="view active" id="v-brief">
+        <div id="briefBody"></div>
+      </section>
+
+
+
+      <section class="view" id="v-overview">
+        <div id="ovBody"></div>
+      </section>
+
+
+
+      <section class="view" id="v-decide">
+        <div id="decideBody"></div>
+      </section>
+
+
+      <section class="view" id="v-order">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-t">跟 AI 说一句话</span>
+            <span class="card-note">系统自动拆任务、定负责人、发通知</span>
+          </div>
+          <div class="cmd-box">
+            <div class="cmd-in">
+              <input id="cmdInput" placeholder="例如：这个客户移交给张三，让他今天把资料交接好">
+              <button class="btn-primary" id="cmdBtn">下达指令</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
+            <button class="btn ghost quick">这个客户移交给张三，让他今天把资料交接好</button>
+            <button class="btn ghost quick">通知运营两个小时内提交调整方案给我</button>
+            <button class="btn ghost quick">让负责人今天下班前回复最新进度</button>
+          </div>
+        </div>
+
+        <div class="card mt14">
+          <div class="card-head">
+            <span class="card-t">AI 已下达任务</span>
+            <span class="card-note" id="taskCount">4 项进行中</span>
+          </div>
+          <div id="taskList" style="display:flex;flex-direction:column;gap:11px">
+
+            <div class="task">
+              <div class="task-ic">
+                <svg viewBox="0 0 24 24"><path d="M7 20V9l5-5 5 5v11"/><path d="M4 20h16"/></svg>
+              </div>
+              <div class="task-b">
+                <div class="task-t">客户移交与资料交接</div>
+                <div class="task-m">
+                  负责人 <span>张三</span> · 截止 <span>今日 18:00</span> · 关联客户 <span>华信商贸</span><br>
+                  要求：客户档案、沟通记录、当前合作进度一次性移交，并在系统内确认接收
+                </div>
+              </div>
+              <span class="chip cyan">待接收</span>
+            </div>
+
+            <div class="task">
+              <div class="task-ic">
+                <svg viewBox="0 0 24 24"><path d="M4 18V9M9.3 18V5M14.7 18v-6M20 18v-9"/></svg>
+              </div>
+              <div class="task-b">
+                <div class="task-t">投流计划重新审核</div>
+                <div class="task-m">
+                  负责人 <span>运营 · 小黎</span> · 截止 <span>今日 12:30</span>（2 小时）<br>
+                  要求：提交调整方案含预算重分配、素材替换清单，报老板审批
+                </div>
+              </div>
+              <span class="chip amber">待提交</span>
+            </div>
+
+            <div class="task">
+              <div class="task-ic">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 2"/></svg>
+              </div>
+              <div class="task-b">
+                <div class="task-t">官网项目新节点确认</div>
+                <div class="task-m">
+                  负责人 <span>林晨</span> · 截止 <span>今日 18:00</span><br>
+                  要求：明确设计终稿确认时间、重新排定交付节点，并同步给客户
+                </div>
+              </div>
+              <span class="chip green">已确认</span>
+            </div>
+
+            <div class="task">
+              <div class="task-ic">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+              </div>
+              <div class="task-b">
+                <div class="task-t">本周超期客户集中清理</div>
+                <div class="task-m">
+                  负责人 <span>销售部全员</span> · 截止 <span>本周五</span><br>
+                  要求：3 位超期客户逐一联系并补录跟进记录，未联系的在周会上说明原因
+                </div>
+              </div>
+              <span class="chip">进行中</span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+
+      <section class="view" id="v-night">
+        <div class="grid g-2-1">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-t">夜间自动追问记录</span>
+              <span class="card-note">22:00 — 08:00 无人值守运行</span>
+            </div>
+
+            <div style="display:flex;gap:0;margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid var(--line)">
+              <div style="flex:1;padding:11px 14px;border-right:1px solid var(--line)">
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:5px">已确认接收</div>
+                <div class="tnum" style="font-size:20px;color:var(--green)">2 / 4</div>
+              </div>
+              <div style="flex:1;padding:11px 14px;border-right:1px solid var(--line)">
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:5px">已开始推进</div>
+                <div class="tnum" style="font-size:20px;color:var(--cyan)">2 / 4</div>
+              </div>
+              <div style="flex:1;padding:11px 14px;border-right:1px solid var(--line)">
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:5px">仍无动静</div>
+                <div class="tnum" style="font-size:20px;color:var(--red)">1</div>
+              </div>
+              <div style="flex:1;padding:11px 14px">
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:5px">自动追问轮次</div>
+                <div class="tnum" style="font-size:20px;color:var(--gold)">7</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+              <div>
+                <div style="font-size:12px;color:var(--tx2);margin-bottom:11px;display:flex;align-items:center;gap:7px">
+                  <span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block"></span>
+                  张三 · 客户移交
+                </div>
+                <div class="talk">
+                  <div class="msg"><b>10:40</b><span class="who">AI 任务助手</span>客户资料交接任务收到了吗？请确认接收。</div>
+                  <div class="msg"><b>10:42</b><span class="who">张三</span>收到了。</div>
+                  <div class="msg"><b>10:55</b><span class="who">AI 任务助手</span>已经开始了吗？目前进展到哪一步？</div>
+                  <div class="msg"><b>10:57</b><span class="who">张三</span>已经开始，客户档案整理好了，正在补充沟通记录，预计今天 16:00 完成。</div>
+                  <div class="msg" style="color:var(--green)"><b>21:30</b>系统记录：已完成 · 自动归档</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:12px;color:var(--tx2);margin-bottom:11px;display:flex;align-items:center;gap:7px">
+                  <span style="width:5px;height:5px;border-radius:50%;background:var(--amber);display:inline-block"></span>
+                  小黎 · 投流方案
+                </div>
+                <div class="talk">
+                  <div class="msg"><b>10:41</b><span class="who">AI 任务助手</span>投流调整方案收到了吗？截止 12:30。</div>
+                  <div class="msg"><b>10:43</b><span class="who">小黎</span>收到了。</div>
+                  <div class="msg"><b>11:02</b><span class="who">AI 任务助手</span>方案开始做了吗？请同步当前进度。</div>
+                  <div class="msg"><b>11:04</b><span class="who">小黎</span>正在整理投放数据，方案还没写完，预计 12:00 提交。</div>
+                  <div class="msg" style="color:var(--amber)"><b>23:15</b>系统记录：已提交 · 待老板审批</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:13px">
+            <div class="card">
+              <div class="card-head"><span class="card-t">早上 08:00 自动汇总</span></div>
+              <div style="font-size:12.5px;color:var(--tx2);line-height:1.95">
+                昨晚下达的 4 项任务：<br>
+                <b style="color:var(--green);font-weight:500">2 项</b>已确认并推进，<br>
+                <b style="color:var(--amber);font-weight:500">1 项</b>提交待审批，<br>
+                <b style="color:var(--red);font-weight:500">1 项</b>整晚无任何回应。
+              </div>
+              <div style="margin-top:13px;padding:11px 13px;border-radius:8px;background:rgba(240,85,90,.07);border:1px solid rgba(240,85,90,.2);font-size:12px;color:#FF9FA2;line-height:1.8">
+                周宁对「门店上线物料」任务连续 2 天无回应，建议今日当面确认。
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-t">为什么要夜里跑</span></div>
+              <div style="font-size:12px;color:var(--tx2);line-height:1.95">
+                白天员工在忙，追问会打断工作；夜里没有干扰，AI 只做三件事：
+                确认收到、追踪进度、记录承诺时间。<br><br>
+                第二天早上你看到的不是「谁没回消息」，而是<b style="color:var(--tx);font-weight:500">谁答应了没做到</b>。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="view" id="v-source">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-t">数据源接入状态</span>
+            <span class="card-note">同步频率：每日 08:50 全量 + 每小时增量</span>
+          </div>
+          <div id="srcBody" style="display:grid;grid-template-columns:repeat(2,1fr);gap:11px"></div>
+        </div>
+
+        <div class="grid g1-2 mt14">
+          <div class="card">
+            <div class="card-head"><span class="card-t">数据质量</span></div>
+            <div id="chartQuality" class="chart" style="height:186px"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-t">数据链路</span>
+              <span class="card-note">BI 架构 · 四层</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid var(--line)">
+                <span class="tnum" style="color:var(--cyan);font-size:11px;width:18px">01</span>
+                <div style="flex:1">
+                  <div style="font-size:12.5px">采集层</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">开放接口 / 定时同步 / 人工补录</div>
+                </div>
+                <span class="chip cyan" id="srcCount">6 个源</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid var(--line)">
+                <span class="tnum" style="color:var(--cyan);font-size:11px;width:18px">02</span>
+                <div style="flex:1">
+                  <div style="font-size:12.5px">清洗层</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">字段映射 · 去重 · 责任人归属</div>
+                </div>
+                <span class="chip cyan">自动</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid var(--line)">
+                <span class="tnum" style="color:var(--cyan);font-size:11px;width:18px">03</span>
+                <div style="flex:1">
+                  <div style="font-size:12.5px">指标层</div>
+                  <div id="metricHint" style="font-size:11px;color:var(--tx3);margin-top:3px">线索 / 成交 / 回款 / 交付 / 人效</div>
+                </div>
+                <span class="chip cyan">48 个指标</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:8px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.24)">
+                <span class="tnum" style="color:var(--cyan);font-size:11px;width:18px">04</span>
+                <div style="flex:1">
+                  <div style="font-size:12.5px">展示层</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:3px">推 / 看 / 决 / 令 四屏 + 移动端</div>
+                </div>
+                <span class="chip cyan">当前页</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="v-notice">
+        <div class="grid" style="grid-template-columns:1fr 330px">
+
+          <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+            <div class="card">
+              <div class="card-head">
+                <span class="card-t">推送渠道</span>
+                <span class="card-note">通知必须落到老板每天必看的地方</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="src">
+                  <span class="src-dot on"></span>
+                  <div style="flex:1">
+                    <div style="font-size:12.5px;margin-bottom:4px">企业微信</div>
+                    <div style="font-size:11px;color:var(--tx3)">主渠道 · 实时推送</div>
+                  </div>
+                  <span class="chip green">已连接</span>
+                </div>
+                <div class="src">
+                  <span class="src-dot off"></span>
+                  <div style="flex:1">
+                    <div style="font-size:12.5px;margin-bottom:4px">钉钉</div>
+                    <div style="font-size:11px;color:var(--tx3)">未授权 · 点击接入</div>
+                  </div>
+                  <span class="chip">未连接</span>
+                </div>
+                <div class="src">
+                  <span class="src-dot on"></span>
+                  <div style="flex:1">
+                    <div style="font-size:12.5px;margin-bottom:4px">短信</div>
+                    <div style="font-size:11px;color:var(--tx3)">仅高危事项触发</div>
+                  </div>
+                  <span class="chip green">已开通</span>
+                </div>
+                <div class="src">
+                  <span class="src-dot on"></span>
+                  <div style="flex:1">
+                    <div style="font-size:12.5px;margin-bottom:4px">邮件</div>
+                    <div style="font-size:11px;color:var(--tx3)">周报 / 月报归档</div>
+                  </div>
+                  <span class="chip green">已开通</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <span class="card-t">通知规则</span>
+                <span class="card-note">满足条件自动触发，无需手动</span>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">重点客户流失预警<span class="chip red">高危</span></div>
+                  <div class="rule-m">客户 3 天无跟进记录，且年预计金额 &gt; 50 万</div>
+                </div>
+                <div class="rule-who">老板<br>销售总监</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">项目延期风险<span class="chip amber">关注</span></div>
+                  <div class="rule-m">实际进度低于计划进度 20 个百分点以上</div>
+                </div>
+                <div class="rule-who">老板<br>项目经理</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">投流成本异常<span class="chip amber">关注</span></div>
+                  <div class="rule-m">单客成本连续 2 天高于基线 20%</div>
+                </div>
+                <div class="rule-who">老板<br>运营负责人</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">大额回款到期<span class="chip cyan">提醒</span></div>
+                  <div class="rule-m">应收款项到期前 3 天，金额 &gt; 10 万</div>
+                </div>
+                <div class="rule-who">财务<br>老板</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">任务逾期未确认<span class="chip cyan">催办</span></div>
+                  <div class="rule-m">任务下发 2 小时未确认收到，自动追问本人</div>
+                </div>
+                <div class="rule-who">执行人<br>直属上级</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+              <div class="rule">
+                <div class="rule-b">
+                  <div class="rule-t">每日战报<span class="chip green">固定</span></div>
+                  <div class="rule-m">每天 08:30 自动汇总昨日经营数据，推送老板</div>
+                </div>
+                <div class="rule-who">老板<br>核心高管</div>
+                <div class="sw on" data-rule></div>
+              </div>
+
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <span class="card-t">免打扰时段</span>
+                <span class="card-note">避免半夜被吵醒，但高危例外</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--tx2);flex-wrap:wrap">
+                <span>仅在</span>
+                <span class="chip cyan" style="font-family:var(--mono)">07:30</span>
+                <span>至</span>
+                <span class="chip cyan" style="font-family:var(--mono)">22:30</span>
+                <span>之间推送非紧急通知</span>
+                <span style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--tx3)">
+                  高危事项仍然立即推送
+                  <span class="sw on" data-rule style="margin-left:2px"></span>
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="position:sticky;top:0;align-self:start">
+            <div class="card" style="padding:18px 14px 20px">
+              <div class="card-head" style="margin-bottom:16px">
+                <span class="card-t">老板手机上收到什么</span>
+              </div>
+
+              <div class="phone">
+                <div class="phone-notch"><i></i></div>
+                <div class="phone-scr">
+                  <div class="wx-top">企业微信</div>
+                  <div class="wx-chat">
+                    <div class="wx-av">AI</div>
+                    <div style="flex:1;min-width:0">
+                      <div class="wx-name">AI 经营助理</div>
+                      <div class="wx-card" id="wxCard"></div>
+                      </div>
+                      <div class="wx-time">08:30</div>
+                    </div>
+                  </div>
+                </div>
+
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;font-size:11.5px;color:var(--tx3);line-height:1.75">
+                <div style="display:flex;gap:8px">
+                  <span style="color:var(--cyan);flex:0 0 auto">·</span>
+                  <span>不用打开电脑，不用登录系统，早上起来在微信里就能看到</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <span style="color:var(--cyan);flex:0 0 auto">·</span>
+                  <span>点「查看完整驾驶舱」直接跳到手机版看板</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <span style="color:var(--cyan);flex:0 0 auto">·</span>
+                  <span>高危事项会单独再发一条短信，确保不会漏</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-h">
+    <span style="font-size:13.5px;font-weight:500">通知中心</span>
+    <span style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:11px;color:var(--tx3)" id="drawerCount">3 条未读</span>
+      <button class="bell" id="drawerClose" style="width:28px;height:28px;margin:0">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </span>
+  </div>
+
+  <div class="drawer-b" id="drawerBody">
+    <div class="nt-day">今天</div>
+
+    <div class="nt unread" data-go="brief">
+      <div class="nt-ic red">
+        <svg viewBox="0 0 24 24"><path d="M12 4.5l8.5 15h-17l8.5-15z"/><path d="M12 10v4M12 16.6v.1"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">华信商贸已 3 天未跟进</div>
+        <div class="nt-m">年预计 120 万 · 负责销售王磊 · 已推送销售总监</div>
+      </div>
+      <div class="nt-time">08:31</div>
+    </div>
+
+    <div class="nt unread" data-go="overview">
+      <div class="nt-ic amber">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l9 5v7l-9 5-9-5v-7l9-5z"/><path d="M12 12v8.5"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">官网改版项目延期 2 天</div>
+        <div class="nt-m">计划进度 70% / 实际 45% · 卡点：设计终稿未确认</div>
+      </div>
+      <div class="nt-time">08:31</div>
+    </div>
+
+    <div class="nt unread" data-go="decide">
+      <div class="nt-ic amber">
+        <svg viewBox="0 0 24 24"><path d="M4 18V9M9.3 18V5M14.7 18v-6M20 18v-9"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">投流单客成本上涨 21%</div>
+        <div class="nt-m">¥18.4 → ¥22.4 · 连续 3 天上升 · 建议暂停计划</div>
+      </div>
+      <div class="nt-time">08:32</div>
+    </div>
+
+    <div class="nt" data-go="order">
+      <div class="nt-ic green">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.2l2.5 2.5 4.7-5.2"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">张三已接收客户移交任务</div>
+        <div class="nt-m">华信商贸资料交接 · 已确认 · 预计今日 16:00 完成</div>
+      </div>
+      <div class="nt-time">10:42</div>
+    </div>
+
+    <div class="nt" data-go="order">
+      <div class="nt-ic cyan">
+        <svg viewBox="0 0 24 24"><path d="M4 12h14M13 7l5 5-5 5"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">运营已提交投流调整方案</div>
+        <div class="nt-m">小黎 · 11:58 提交 · 等待你审批</div>
+      </div>
+      <div class="nt-time">11:58</div>
+    </div>
+
+    <div class="nt-day" id="ntYest">昨天</div>
+
+    <div class="nt" data-go="night">
+      <div class="nt-ic cyan">
+        <svg viewBox="0 0 24 24"><path d="M20.2 14.6A8.2 8.2 0 1 1 9.6 3.9a6.5 6.5 0 0 0 10.6 10.7z"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t">夜间自动追问 7 轮</div>
+        <div class="nt-m">2 项已推进 · 1 项无回应 · 1 项待审批</div>
+      </div>
+      <div class="nt-time">昨日 23:40</div>
+    </div>
+
+    <div class="nt" data-go="overview">
+      <div class="nt-ic green">
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/></svg>
+      </div>
+      <div class="nt-b">
+        <div class="nt-t" id="ntDeptT">本周任务完成率 79%</div>
+        <div class="nt-m" id="ntDeptM">交付部偏低（65%）· 已推送部门负责人</div>
+      </div>
+      <div class="nt-time">昨日 18:00</div>
+    </div>
+  </div>
+
+  <div class="drawer-f">
+    <span id="readAll" style="cursor:pointer;color:var(--cyan)">全部标记已读</span>
+    <span style="cursor:pointer" id="goSetting">通知设置</span>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var TITLES = {
+  brief: ['今日简报', '10月30日 星期五 · 早上好，陈总'],
+  overview: ['经营总览', '近 7 日 · 全公司数据实时汇总'],
+  decide: ['决策建议', 'AI 已整理 3 项待你拍板的事项'],
+  order: ['指令中心', '一句话下达，系统自动拆解到人'],
+  night: ['黑灯工厂', '昨夜 22:00 — 今日 08:00 运行记录'],
+  source: ['数据接入', '6 个数据源 · 4 层 BI 链路'],
+  notice: ['通知推送', '6 条规则 · 自动触发 · 推到你每天看的地方']
+};
+
+var PRESETS = {
+
+  trade: {
+    brand: '星海科技', size: '68 人', tag: '商贸服务', health: 76,
+    decide: [
+      { t:'立即安排客户跟进', m:'华信商贸（年预计 <b>120 万</b>）已 <b>3 天</b>无跟进记录，负责销售王磊本周成交量为 0。同一个客户在 20 日、24 日两次报价后停滞，判断不是客户质量问题，更可能是跟进断层。', a:['联系销售总监','直接联系王磊'] },
+      { t:'建议暂停当前投流计划', m:'投流消耗连续 <b>3 天</b>上升，单客成本从 <b>¥18.4</b> 涨到 <b>¥22.4</b>，偏离正常区间上限 21%。线索量在涨但成交没跟上，说明素材质量在下降，继续投只会推高成本。', a:['确认暂停计划','先看异常数据'] },
+      { t:'先与项目经理沟通一次', m:'官网改版计划进度 <b>70%</b>，实际进度 <b>45%</b>，缺口 25 个百分点，距离交付日只剩 2 天。卡点在设计终稿未确认，属于上游阻塞而非执行效率问题。', a:['联系林晨','查看项目详情'] }
+    ],
+    mobile: {
+      rows:[['新增线索','186 条'],['成交客户','8 位'],['回款金额','¥12.6 万']],
+      risks:[['华信商贸 3 天未跟进','高危','120万'],['官网改版 延期 2 天','关注','62%']]
+    },
+    focus: [
+      { l:'今日聚焦', v:'3', u:'项', d:'按影响金额排序', color:'#22D3EE' },
+      { l:'待你决策', v:'2', u:'项', d:'已生成建议，等你拍板', color:'#F5A623' },
+      { l:'已自动处理', v:'5', u:'项', d:'催办、提醒已发出', color:'#34D399' },
+      { l:'已下达指令', v:'12', u:'条', d:'今日 09:00 起统计', color:'#F0B95C' }
+    ],
+    items: [
+      { lv:'h', t:'华信商贸暂停合作，流失原因待核实', d:'销售部', a:'已标记高危，待确认责任归属', m:'年 120 万' },
+      { lv:'m', t:'官网改版项目延期 2 天，设计稿未确认', d:'交付部', a:'已催办林晨，待回复新节点', m:'合同 38 万' },
+      { lv:'h', t:'投流成本连续 3 天上升，当前计划需复盘', d:'运营部', a:'建议暂停计划前先核对素材', m:'月耗 12 万' },
+      { lv:'m', t:'本周任务完成率 23%，关键事项推进偏慢', d:'全员', a:'已推送催办至企业微信', m:'—' },
+      { lv:'l', t:'本月营收达成 68%，回款节奏正常', d:'财务部', a:'暂无动作建议', m:'回款 126 万' }
+    ],
+    hero: '昨天全公司成交 <b>8 位</b>、新增线索 <b>186 条</b>，整体节奏正常。但有 <span class="r">2 件事在漏钱</span>：华信商贸（年 120 万）已 3 天未跟进，官网项目进度落后 17%。建议今天上午先处理这两件，其余可以放一放。',
+    dims: [
+      { k:'销售', v:82, c:'' }, { k:'交付', v:64, c:'bar red' },
+      { k:'回款', v:70, c:'bar gold' }, { k:'团队', v:78, c:'bar green' }
+    ],
+    ovKpi: [
+      { l:'新增线索', v:'186', u:'条', d:'<span class="up">+12%</span> 较前 7 日均值', color:'#DCE6F2' },
+      { l:'成交客户', v:'8', u:'位', d:'<span class="up">+2</span> 较昨日', color:'#34D399' },
+      { l:'投流消耗', v:'¥4,160', u:'', d:'单客成本 <span class="tnum">¥22.37</span>', color:'#F5A623' },
+      { l:'回款率', v:'70', u:'%', d:'应收 18.0 万 / 待回 5.4 万', color:'#F0B95C' }
+    ],
+    trend: { labels:['10.24','10.25','10.26','10.27','10.28','10.29','10.30'], data:[68,85,102,121,140,168,186], name:'线索数' },
+    source: { big:'186', small:'今日线索', unit:'条', data:[{name:'投流',value:112},{name:'私域',value:46},{name:'转介绍',value:28}] },
+    dept: { data:[{name:'财务部',value:90},{name:'交付部',value:65},{name:'运营部',value:90},{name:'销售部',value:75}] },
+    metric: '线索 / 成交 / 回款 / 交付 / 人效',
+    sources: [
+      { n:'企业微信 · 会话存档', d:'客户沟通记录、群聊、跟进动作', st:'on' },
+      { n:'CRM 客户系统', d:'线索、商机、成交、跟进阶段', st:'on' },
+      { n:'飞书 / 钉钉 · 审批与任务', d:'任务状态、审批流、考勤', st:'on' },
+      { n:'项目管理系统', d:'节点、进度、卡点、负责人', st:'on' },
+      { n:'财务系统 / 银行流水', d:'应收、实收、待回、账期', st:'wait' },
+      { n:'电话录音 / 通话记录', d:'通话时长、关键内容转写', st:'off' }
+    ],
+    t1: {
+      title:'销售客户跟进', note:'超期客户已自动提醒',
+      cols:['销售','在跟客户','今日待办','超期未跟进','本周成交','跟进健康度'],
+      rows:[
+        ['王磊','<span class="tnum">27</span>','<span class="tnum">8</span>','<span class="chip red">1 位</span>','<span class="tnum">1</span>','<div class="bar-wrap"><div class="bar red" style="width:58%"></div></div>'],
+        ['刘悦','<span class="tnum">21</span>','<span class="tnum">6</span>','<span class="chip green">0 位</span>','<span class="tnum">1</span>','<div class="bar-wrap"><div class="bar green" style="width:92%"></div></div>'],
+        ['陈宇','<span class="tnum">19</span>','<span class="tnum">5</span>','<span class="chip amber">2 位</span>','<span class="tnum">0</span>','<div class="bar-wrap"><div class="bar gold" style="width:66%"></div></div>']
+      ],
+      foot:'王磊负责的华信商贸（年预计 120 万）已 3 天无跟进记录，为本周最高风险客户。'
+    },
+    t2: {
+      title:'项目交付节点', note:'3 个在途项目',
+      cols:['项目','负责人','计划交付','当前进度','风险','卡点'],
+      rows:[
+        ['官网改版','<span class="tnum">林晨</span>','<span class="tnum">10月25日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar red" style="width:62%"></div></div><span class="tnum" style="font-size:11.5px">62%</span></div>','<span class="chip red">高风险</span>','设计终稿未确认'],
+        ['门店上线','<span class="tnum">周宁</span>','<span class="tnum">11月02日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar gold" style="width:48%"></div></div><span class="tnum" style="font-size:11.5px">48%</span></div>','<span class="chip amber">中风险</span>','物料未齐'],
+        ['培训系统','<span class="tnum">许峰</span>','<span class="tnum">11月08日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar green" style="width:90%"></div></div><span class="tnum" style="font-size:11.5px">90%</span></div>','<span class="chip green">正常</span>','联调测试中']
+      ]
+    }
+  },
+
+  mfg: {
+    brand: '恒远化纤', size: '420 人', tag: '化纤制造', health: 71,
+    decide: [
+      { t:'立即停机检修 3 号产线', m:'3 号产线断头率升至 <b>4.8%</b>，是标准值 2.0% 的 2.4 倍，已连续 <b>3 天</b>。按当前效率，日产出比满负荷少约 <b>12 吨</b>，一周损失约 34 万。', a:['通知生产经理','联系设备科'] },
+      { t:'与恒隆纺织协商延期赔付', m:'200 吨订单原定 10月28日交付，现延期 <b>2 天</b>，将触发合同违约金约 <b>4.3 万</b>。客户已两次催问，建议主动给补偿方案，而不是等对方提。', a:['让销售总监对接','查看合同条款'] },
+      { t:'锁价采购己内酰胺 15 天用量', m:'原料价格环比上涨 <b>6.2%</b>，按当前用量测算，月成本将增加 <b>18 万</b>。该品种历史上涨价后 2 周内通常回落，建议锁 15 天用量对冲。', a:['通知采购锁价','先比价三家'] }
+    ],
+    mobile: {
+      rows:[['日产量','38.6 吨'],['良品率','96.2%'],['准时交付','87%']],
+      risks:[['3 号产线 断头率 4.8%','高危','停机'],['恒隆纺织 延期 2 天','关注','200吨']]
+    },
+    focus: [
+      { l:'今日聚焦', v:'4', u:'项', d:'按停机与违约风险排序', color:'#22D3EE' },
+      { l:'待你决策', v:'3', u:'项', d:'已生成处理建议', color:'#F5A623' },
+      { l:'已自动处理', v:'6', u:'项', d:'派单、催办已发出', color:'#34D399' },
+      { l:'已下达指令', v:'9', u:'条', d:'今日 07:30 起统计', color:'#F0B95C' }
+    ],
+    items: [
+      { lv:'h', t:'3 号产线断头率升至 4.8%，超标准 2 倍', d:'生产部', a:'已停机排查，待确认原因', m:'日出货 12 吨' },
+      { lv:'h', t:'恒隆纺织 200 吨订单交付延期 2 天', d:'销售部', a:'新交期已确认，客户要求补偿', m:'合同 86 万' },
+      { lv:'m', t:'己内酰胺采购价环比上涨 6.2%', d:'采购部', a:'建议锁价 15 天用量', m:'月成本 +18 万' },
+      { lv:'m', t:'应收账款超 90 天金额 320 万', d:'财务部', a:'催收清单已推送业务员', m:'现金 320 万' },
+      { lv:'l', t:'本月产能利用率 82%，略低于目标 85%', d:'生产部', a:'暂无动作建议', m:'—' }
+    ],
+    hero: '昨天三条产线合计产出 <b>38.6 吨</b>、良品率 <b>96.2%</b>，整体正常。但 <span class="r">3 号产线断头率 4.8%</span>（标准 2.0%）已连续 3 天，恒隆纺织订单延期还会触发违约金。建议今天先下车间看 3 号线，其余可以放一放。',
+    dims: [
+      { k:'生产', v:78, c:'' }, { k:'品控', v:92, c:'bar green' },
+      { k:'交付', v:71, c:'bar gold' }, { k:'现金', v:68, c:'bar red' }
+    ],
+    ovKpi: [
+      { l:'日产量', v:'38.6', u:'吨', d:'<span style="color:var(--green)">-3.2%</span> 较昨日', color:'#DCE6F2' },
+      { l:'良品率', v:'96.2', u:'%', d:'<span style="color:var(--green)">-0.8</span> 个百分点', color:'#34D399' },
+      { l:'准时交付率', v:'87', u:'%', d:'<span class="up">+3</span> 个百分点', color:'#22D3EE' },
+      { l:'原料库存', v:'12', u:'天', d:'低于安全线 15 天', color:'#F5A623' }
+    ],
+    trend: { labels:['10.24','10.25','10.26','10.27','10.28','10.29','10.30'], data:[41.2,40.5,39.8,40.1,39.2,39.9,38.6], name:'日产量 吨' },
+    source: { big:'357', small:'本月接单 吨', unit:'吨', data:[{name:'老客户复购',value:214},{name:'新客户',value:100},{name:'贸易商',value:43}] },
+    dept: { data:[{name:'采购部',value:71},{name:'生产部',value:78},{name:'销售部',value:84},{name:'仓储部',value:88},{name:'品控部',value:92}] },
+    metric: '产量 / 良品率 / 交期 / 库存 / 吨电耗',
+    sources: [
+      { n:'ERP 生产工单', d:'排产计划、工单、批次、产线', st:'on' },
+      { n:'产线设备采集 (PLC / DCS)', d:'车速、断头率、稼动率、停机', st:'on' },
+      { n:'质检系统', d:'抽检记录、判等、降等率', st:'on' },
+      { n:'仓储 WMS / 地磅', d:'原料与成品库存、发货过磅', st:'on' },
+      { n:'财务 · 应收应付', d:'应收、账期、票据、承兑', st:'wait' },
+      { n:'能耗计量表', d:'吨电耗、蒸汽、水耗', st:'off' }
+    ],
+    t1: {
+      title:'订单交付跟踪', note:'4 个在途订单',
+      cols:['客户','订单量','交货期','当前进度','状态'],
+      rows:[
+        ['恒隆纺织','<span class="tnum">200 吨</span>','<span class="tnum">10月28日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar red" style="width:88%"></div></div><span class="tnum" style="font-size:11.5px">延期</span></div>','<span class="chip red">高风险</span>'],
+        ['东亚织造','<span class="tnum">120 吨</span>','<span class="tnum">11月02日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar green" style="width:68%"></div></div><span class="tnum" style="font-size:11.5px">68%</span></div>','<span class="chip green">正常</span>'],
+        ['新民针织','<span class="tnum">80 吨</span>','<span class="tnum">11月05日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar gold" style="width:45%"></div></div><span class="tnum" style="font-size:11.5px">45%</span></div>','<span class="chip amber">关注</span>'],
+        ['华纺集团','<span class="tnum">150 吨</span>','<span class="tnum">11月12日</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar green" style="width:22%"></div></div><span class="tnum" style="font-size:11.5px">22%</span></div>','<span class="chip green">正常</span>']
+      ],
+      foot:'恒隆纺织订单延期将触发合同违约金（约 4.3 万），已通知销售与生产协同处理。'
+    },
+    t2: {
+      title:'产线运行状态', note:'3 条产线 · 实时采集',
+      cols:['产线','当班班组','今日产量','断头率','状态'],
+      rows:[
+        ['1 号产线','<span class="tnum">甲班</span>','<span class="tnum">14.2 吨</span>','<span class="tnum">1.6%</span>','<span class="chip green">正常</span>'],
+        ['2 号产线','<span class="tnum">甲班</span>','<span class="tnum">13.8 吨</span>','<span class="tnum">1.9%</span>','<span class="chip green">正常</span>'],
+        ['3 号产线','<span class="tnum">乙班</span>','<span class="tnum">10.6 吨</span>','<span class="tnum" style="color:#FF8B8E">4.8%</span>','<span class="chip red">停机排查</span>']
+      ]
+    }
+  },
+
+  shop: {
+    brand: '礼遇礼品', size: '5 店 · 28 人', tag: '门店零售', health: 74,
+    decide: [
+      { t:'约万象城店长今日面谈', m:'万象城店营业额连续 <b>3 天</b>下滑，日均少 <b>1,800</b>，是 5 家店里唯一负增长的。同期客单价没降，说明问题在客流而不是商品，需要现场看陈列和人员状态。', a:['安排今日面谈','看昨日客流'] },
+      { t:'立即暂停礼盒 A 款线上投放', m:'中秋礼盒 A 款已断货 <b>2 天</b>，但线上仍在投放，每天约 <b>3,200</b> 元广告费打在无货商品上。同样问题上个月出现过一次。', a:['确认暂停投放','催采购到货'] },
+      { t:'2 小时内回复大众点评差评', m:'新增 <b>2 条</b>差评，均为「包装破损」，集中在老城店。同类差评本月第 3 次出现，可能是该店打包流程问题，建议不只是回复，还要查流程。', a:['通知店长回复','查看评价原文'] }
+    ],
+    mobile: {
+      rows:[['日营业额','¥8.64 万'],['客单价','¥186'],['复购率','32%']],
+      risks:[['万象城店 连降 3 天','高危','-12%'],['礼盒 A 款 已断货','高危','0 件']]
+    },
+    focus: [
+      { l:'今日聚焦', v:'3', u:'项', d:'按营业额影响排序', color:'#22D3EE' },
+      { l:'待你决策', v:'2', u:'项', d:'已生成处理建议', color:'#F5A623' },
+      { l:'已自动处理', v:'4', u:'项', d:'补货、催办已发出', color:'#34D399' },
+      { l:'已下达指令', v:'7', u:'条', d:'今日 09:30 起统计', color:'#F0B95C' }
+    ],
+    items: [
+      { lv:'h', t:'万象城店营业额连续 3 天下滑', d:'门店', a:'已约店长今日面谈', m:'日均 -1,800' },
+      { lv:'h', t:'中秋礼盒 A 款断货，线上仍在投放', d:'采购', a:'建议立即暂停该商品投放', m:'日损 3,200' },
+      { lv:'m', t:'大众点评新增 2 条差评未回复', d:'线上', a:'已推送店长 2 小时内回复', m:'影响进店' },
+      { lv:'m', t:'3 号店店员离职，本周排班缺口 3 人', d:'人事', a:'已启动跨店临时调配', m:'—' },
+      { lv:'l', t:'本月营业额达成 73%，毛利率 41.2%', d:'财务', a:'暂无动作建议', m:'86.4 万' }
+    ],
+    hero: '昨天 5 家店合计营业额 <b>8.64 万</b>、客单价 <b>186 元</b>，较上周同期下降 4.2%。主要拖累是万象城店（日均少 1,800）。另外 <span class="r">礼盒 A 款已断货 2 天，线上却还在投放</span>，每天都在白花钱。建议今天先处理这两件。',
+    dims: [
+      { k:'门店', v:74, c:'bar gold' }, { k:'商品', v:68, c:'bar red' },
+      { k:'线上', v:88, c:'bar green' }, { k:'现金', v:79, c:'' }
+    ],
+    ovKpi: [
+      { l:'日营业额', v:'¥86,400', u:'', d:'<span style="color:var(--green)">-4.2%</span> 较上周同期', color:'#DCE6F2' },
+      { l:'客单价', v:'¥186', u:'', d:'<span class="up">+6</span> 元', color:'#22D3EE' },
+      { l:'毛利率', v:'41.2', u:'%', d:'<span style="color:var(--green)">-1.5</span> 个百分点', color:'#F5A623' },
+      { l:'复购率', v:'32', u:'%', d:'<span class="up">+2</span> 个百分点', color:'#F0B95C' }
+    ],
+    trend: { labels:['10.24','10.25','10.26','10.27','10.28','10.29','10.30'], data:[9.1,8.8,9.4,8.6,9.0,8.2,8.64], name:'营业额 万元' },
+    source: { big:'8.64', small:'今日营业额 万', unit:'万元', data:[{name:'门店',value:5.36},{name:'线上',value:2.42},{name:'企业团购',value:0.86}] },
+    dept: { data:[{name:'采购部',value:68},{name:'门店部',value:82},{name:'人事部',value:76},{name:'线上部',value:91}] },
+    metric: '营业额 / 客单价 / 毛利 / 复购 / 坪效',
+    sources: [
+      { n:'POS 收银系统', d:'每单流水、支付方式、退货', st:'on' },
+      { n:'美团 / 抖音团购后台', d:'到店核销、团购订单、评价', st:'on' },
+      { n:'会员 / 小程序', d:'复购、储值、积分与标签', st:'on' },
+      { n:'进销存系统', d:'SKU 库存、动销天数、缺货', st:'on' },
+      { n:'财务 · 门店日结', d:'毛利、结算单、费用分摊', st:'wait' },
+      { n:'客流统计设备', d:'进店人数、停留时长、转化', st:'off' }
+    ],
+    t1: {
+      title:'门店经营排名', note:'5 家门店 · 今日实时',
+      cols:['门店','日营业额','客单价','同比','状态'],
+      rows:[
+        ['万象城店','<span class="tnum">¥21,600</span>','<span class="tnum">¥198</span>','<span class="tnum" style="color:var(--green)">-12%</span>','<span class="chip red">下滑</span>'],
+        ['银泰店','<span class="tnum">¥19,800</span>','<span class="tnum">¥186</span>','<span class="tnum" style="color:var(--red)">+3%</span>','<span class="chip green">正常</span>'],
+        ['3 号店','<span class="tnum">¥16,400</span>','<span class="tnum">¥172</span>','<span class="tnum" style="color:var(--green)">-2%</span>','<span class="chip green">正常</span>'],
+        ['高铁店','<span class="tnum">¥15,200</span>','<span class="tnum">¥178</span>','<span class="tnum" style="color:var(--red)">+8%</span>','<span class="chip green">正常</span>'],
+        ['老城店','<span class="tnum">¥13,400</span>','<span class="tnum">¥164</span>','<span class="tnum" style="color:var(--green)">-5%</span>','<span class="chip amber">关注</span>']
+      ],
+      foot:'万象城店连续 3 天下滑，需确认是客流问题还是陈列问题。'
+    },
+    t2: {
+      title:'重点商品动销', note:'库存不足将自动预警',
+      cols:['商品','库存','日均销量','可售天数','状态'],
+      rows:[
+        ['中秋礼盒 A 款','<span class="tnum" style="color:#FF8B8E">0 件</span>','<span class="tnum">28 件</span>','<span class="tnum">0 天</span>','<span class="chip red">断货</span>'],
+        ['企业定制礼盒','<span class="tnum">120 件</span>','<span class="tnum">15 件</span>','<span class="tnum">8 天</span>','<span class="chip green">正常</span>'],
+        ['伴手礼套装','<span class="tnum">46 件</span>','<span class="tnum">22 件</span>','<span class="tnum">2 天</span>','<span class="chip amber">偏低</span>']
+      ]
+    }
+  },
+
+  estate: {
+    brand: '华信置业', size: '4 个项目 · 168 人', tag: '房地产开发', health: 68,
+    decide: [
+      { t:'立即催办 12 套已认购未网签', m:'12 套认购超过 <b>15 天</b>仍未网签，涉及金额 <b>486 万</b>。其中 3 套客户已失联 5 天以上，按以往规律，认购超 20 天的流失率是 4 倍。这不是财务流程慢，是销售不敢催。', a:['通知营销总监','看逾期明细'] },
+      { t:'学府壹号需要重新定价或换渠道', m:'该项目连续 <b>4 周</b>零认购，去化率 <b>41%</b>，是三个盘里最低。同期区域竞品均价已下调 3%，我们没动。继续维持原价，等于每月白扛 <b>60 万</b> 财务成本。', a:['调取竞品价格','开定价会'] },
+      { t:'3 号楼进度滞后将影响预售节点', m:'主体施工计划进度 <b>78%</b>，实际 <b>66%</b>，缺口 12 个百分点。按当前速度，预售证要推迟 <b>18 天</b>，直接影响下批次 <b>2,400 万</b> 货值入市。', a:['约谈工程总包','查看施工日志'] }
+    ],
+    mobile: {
+      rows:[['今日来访','42 组'],['认购套数','6 套'],['今日回款','¥386 万']],
+      risks:[['12 套认购未网签','高危','486万'],['学府壹号 4 周零认购','高危','41%']]
+    },
+    focus: [
+      { l:'今日聚焦', v:'3', u:'项', d:'按货值与回款排序', color:'#22D3EE' },
+      { l:'待你决策', v:'3', u:'项', d:'定价与工程各一项', color:'#F5A623' },
+      { l:'已自动处理', v:'7', u:'项', d:'网签催办、渠道对账', color:'#34D399' },
+      { l:'已下达指令', v:'5', u:'条', d:'今日 08:40 起统计', color:'#F0B95C' }
+    ],
+    items: [
+      { lv:'h', t:'12 套已认购未网签，最长逾期 22 天', d:'营销部', a:'已推送催办至案场经理', m:'涉及 486 万' },
+      { lv:'h', t:'学府壹号连续 4 周零认购', d:'案场', a:'建议调价或切换渠道', m:'货值 2,100 万' },
+      { lv:'m', t:'3 号楼主体进度落后 12 个百分点', d:'工程部', a:'已约谈总包，待回新节点', m:'影响 2,400 万' },
+      { lv:'m', t:'渠道分销来访 268 组，成交仅 4 套', d:'渠道', a:'渠道质量待复核，佣金已暂缓', m:'佣金 38 万' },
+      { lv:'l', t:'本月回款达成 82%，按揭放款正常', d:'财务部', a:'暂无动作建议', m:'回款 3,860 万' }
+    ],
+    hero: '昨天来访 <b>42 组</b>、认购 <b>6 套</b>、回款 <b>386 万</b>，节奏尚可。但有两件事在压现金：<span class="r">12 套认购超 15 天未网签（486 万）</span>、学府壹号已 4 周零认购（货值 2,100 万）。建议今天先盯网签，再定学府壹号的价。',
+    dims: [
+      { k:'去化', v:62, c:'bar gold' }, { k:'回款', v:82, c:'bar green' },
+      { k:'工程', v:66, c:'bar red' }, { k:'渠道', v:58, c:'bar red' }
+    ],
+    ovKpi: [
+      { l:'今日来访', v:'42', u:'组', d:'<span class="up">+8</span> 组 较昨日', color:'#DCE6F2' },
+      { l:'认购套数', v:'6', u:'套', d:'<span class="up">+2</span> 套 较昨日', color:'#34D399' },
+      { l:'今日回款', v:'386', u:'万', d:'本月累计 3,860 万', color:'#22D3EE' },
+      { l:'去化率', v:'62', u:'%', d:'区域均值 <span class="tnum">65%</span>', color:'#F5A623' }
+    ],
+    trend: { labels:['10.24','10.25','10.26','10.27','10.28','10.29','10.30'], data:[420,380,510,460,590,520,486], name:'认购金额 万元' },
+    source: { big:'512', small:'本月来访 组', unit:'组', data:[{name:'渠道分销',value:268},{name:'自然到访',value:146},{name:'老带新',value:98}] },
+    dept: { data:[{name:'工程部',value:66},{name:'营销部',value:74},{name:'财务部',value:83},{name:'客服部',value:90}] },
+    metric: '来访 / 认购 / 去化 / 回款 / 货值',
+    sources: [
+      { n:'售楼系统（明源云 / 思源）', d:'来访、认购、网签、退订', st:'on' },
+      { n:'渠道分销对账', d:'报备、到访、成交、佣金结算', st:'on' },
+      { n:'工程进度系统', d:'施工日志、形象进度、节点', st:'on' },
+      { n:'OA 审批', d:'优惠审批、特价房、退定审批', st:'on' },
+      { n:'财务 · 按揭与回款', d:'认购金、首付、按揭放款', st:'wait' },
+      { n:'竞品价格监测', d:'周边竞品均价、去化速度', st:'off' }
+    ],
+    t1: {
+      title:'楼盘去化', note:'3 个在售项目',
+      cols:['楼盘','在售套数','本周认购','去化率','均价','状态'],
+      rows:[
+        ['云璟台','<span class="tnum">128 套</span>','<span class="tnum">4 套</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar green" style="width:72%"></div></div><span class="tnum" style="font-size:11.5px">72%</span></div>','<span class="tnum">¥1.86 万</span>','<span class="chip green">正常</span>'],
+        ['江畔里','<span class="tnum">96 套</span>','<span class="tnum">2 套</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar gold" style="width:58%"></div></div><span class="tnum" style="font-size:11.5px">58%</span></div>','<span class="tnum">¥1.62 万</span>','<span class="chip amber">关注</span>'],
+        ['学府壹号','<span class="tnum">210 套</span>','<span class="tnum" style="color:#FF8B8E">0 套</span>','<div style="display:flex;align-items:center;gap:9px"><div class="bar-wrap" style="flex:1"><div class="bar red" style="width:41%"></div></div><span class="tnum" style="font-size:11.5px">41%</span></div>','<span class="tnum">¥1.28 万</span>','<span class="chip red">滞销</span>']
+      ],
+      foot:'学府壹号连续 4 周零认购，去化率 41%，为当前货值最大风险，建议本周内完成定价复核。'
+    },
+    t2: {
+      title:'回款与网签', note:'3 笔需跟进',
+      cols:['客户','房源','认购日期','当前节点','金额'],
+      rows:[
+        ['张先生','<span class="tnum">云璟台 3-1802</span>','<span class="tnum">10月12日</span>','<span class="chip red">已认购未网签</span>','<span class="tnum">218 万</span>'],
+        ['李女士','<span class="tnum">江畔里 2-0906</span>','<span class="tnum">10月20日</span>','<span class="chip amber">按揭审批中</span>','<span class="tnum">176 万</span>'],
+        ['王先生','<span class="tnum">学府壹号 1-0603</span>','<span class="tnum">10月26日</span>','<span class="chip green">已网签待放款</span>','<span class="tnum">132 万</span>']
+      ]
+    }
+  },
+
+  food: {
+    brand: '悦膳餐饮', size: '8 店 · 124 人', tag: '连锁餐饮', health: 72,
+    decide: [
+      { t:'今天去老城店现场看一次', m:'老城店连续 <b>3 天</b>下滑，日均少 <b>2,100</b>，翻台率从 <b>3.1</b> 掉到 <b>2.1</b>，是 8 家店里唯一低于 2.5 的。<b>同期客单价没降</b>，说明不是菜品问题，是进店人数或出餐速度问题——必须到现场看，不能远程猜。', a:['安排今日到店','看出餐时长'] },
+      { t:'查酸菜鱼成本率为何涨 4.6 个点', m:'招牌酸菜鱼成本率从 <b>38.0%</b> 升到 <b>42.6%</b>，日销 186 份，一天多花约 <b>1,340 元</b>，一个月 <b>4 万</b>。同期鱼价只涨了 1.2%，问题更可能在改刀损耗或配送规格。', a:['调采购比价单','查后厨出成率'] },
+      { t:'暂停外卖「满 30 减 12」活动', m:'该活动连续 <b>5 天</b>实付倒挂：客单价 34 元、优惠 12 元、平台抽佣 7 元、食材成本 15 元，<b>每单亏 0.4 元</b>，且集中在老城店。冲单量没有意义，先把利润修回来。', a:['确认暂停活动','改阶梯满减'] }
+    ],
+    mobile: {
+      rows:[['日营业额','¥18.6 万'],['翻台率','3.2 次'],['毛利率','58.4%']],
+      risks:[['老城店 连降 3 天','高危','-9%'],['酸菜鱼 成本率 42.6%','高危','+4.6pt']]
+    },
+    focus: [
+      { l:'今日聚焦', v:'3', u:'项', d:'按日损金额排序', color:'#22D3EE' },
+      { l:'待你决策', v:'2', u:'项', d:'成本与投放各一项', color:'#F5A623' },
+      { l:'已自动处理', v:'6', u:'项', d:'补货、差评回复已发出', color:'#34D399' },
+      { l:'已下达指令', v:'9', u:'条', d:'今日 09:10 起统计', color:'#F0B95C' }
+    ],
+    items: [
+      { lv:'h', t:'老城店营业额连续 3 天下滑，翻台率降至 2.1', d:'门店', a:'已约店长今日到店复盘', m:'日均 -2,100' },
+      { lv:'h', t:'招牌酸菜鱼成本率升至 42.6%，超标准 4.6 个点', d:'后厨', a:'建议查改刀损耗与采购规格', m:'月增 4 万' },
+      { lv:'m', t:'外卖满减活动连续 5 天实付倒挂', d:'外卖', a:'建议暂停活动改阶梯满减', m:'日亏 460' },
+      { lv:'m', t:'中心广场店晚市出餐超时 3 单/日', d:'前厅', a:'已排班预警，待调峰', m:'影响评分' },
+      { lv:'l', t:'本月营业额达成 78%，毛利率 58.4%', d:'财务', a:'暂无动作建议', m:'426 万' }
+    ],
+    hero: '昨天 8 家店合计营业额 <b>18.6 万</b>、翻台率 <b>3.2</b>，整体平稳。但 <span class="r">老城店连降 3 天</span>、招牌酸菜鱼成本率涨了 4.6 个点（一个月多花 4 万）。建议今天先到老城店看现场，再让采购对一次鱼价。',
+    dims: [
+      { k:'门店', v:72, c:'bar gold' }, { k:'成本', v:61, c:'bar red' },
+      { k:'外卖', v:66, c:'bar gold' }, { k:'人效', v:85, c:'bar green' }
+    ],
+    ovKpi: [
+      { l:'日营业额', v:'¥18.6', u:'万', d:'<span style="color:var(--green)">-3.1%</span> 较上周同期', color:'#DCE6F2' },
+      { l:'翻台率', v:'3.2', u:'次', d:'<span style="color:var(--green)">-0.2</span> 较昨日', color:'#22D3EE' },
+      { l:'毛利率', v:'58.4', u:'%', d:'<span style="color:var(--green)">-1.8</span> 个百分点', color:'#F5A623' },
+      { l:'人效', v:'¥1,420', u:'', d:'<span class="up">+4.3%</span> 较上月', color:'#F0B95C' }
+    ],
+    trend: { labels:['10.24','10.25','10.26','10.27','10.28','10.29','10.30'], data:[17.2,18.4,19.1,18.8,19.6,19.2,18.6], name:'日营业额 万元' },
+    source: { big:'18.6', small:'今日营业额 万', unit:'万元', data:[{name:'堂食',value:11.2},{name:'外卖',value:5.4},{name:'团购',value:2.0}] },
+    dept: { data:[{name:'采购部',value:64},{name:'后厨',value:69},{name:'前厅',value:78},{name:'外卖',value:86}] },
+    metric: '营业额 / 翻台 / 成本率 / 人效 / 评分',
+    sources: [
+      { n:'POS / 收银系统', d:'每单流水、翻台、支付与折扣', st:'on' },
+      { n:'美团 / 饿了么 商家后台', d:'外卖单量、活动、曝光与评分', st:'on' },
+      { n:'抖音 / 大众点评', d:'团购核销、评价、差评', st:'on' },
+      { n:'供应链配送系统', d:'采购价、到货、出成率、损耗', st:'on' },
+      { n:'财务 · 门店日结', d:'各店营业额、成本、毛利', st:'wait' },
+      { n:'排班 / 考勤系统', d:'班次、出勤、人效', st:'off' }
+    ],
+    t1: {
+      title:'门店经营排名', note:'8 家门店 · 今日实时',
+      cols:['门店','日营业额','翻台率','客单价','评分','状态'],
+      rows:[
+        ['中心广场店','<span class="tnum">¥32,600</span>','<span class="tnum">3.8</span>','<span class="tnum">¥68</span>','<span class="tnum">4.8</span>','<span class="chip green">正常</span>'],
+        ['高新店','<span class="tnum">¥28,400</span>','<span class="tnum">3.4</span>','<span class="tnum">¥72</span>','<span class="tnum">4.6</span>','<span class="chip green">正常</span>'],
+        ['城东店','<span class="tnum">¥24,800</span>','<span class="tnum">3.0</span>','<span class="tnum">¥64</span>','<span class="tnum">4.5</span>','<span class="chip green">正常</span>'],
+        ['老城店','<span class="tnum" style="color:#FF8B8E">¥19,200</span>','<span class="tnum" style="color:#FF8B8E">2.1</span>','<span class="tnum">¥61</span>','<span class="tnum">4.1</span>','<span class="chip red">下滑</span>']
+      ],
+      foot:'老城店连续 3 天下滑且评分 8 店最低（4.1），需现场确认前厅效率与出品稳定性。'
+    },
+    t2: {
+      title:'菜品成本监控', note:'成本率超标准自动预警',
+      cols:['菜品','日销量','成本率','环比','状态'],
+      rows:[
+        ['招牌酸菜鱼','<span class="tnum">186 份</span>','<span class="tnum" style="color:#FF8B8E">42.6%</span>','<span class="tnum" style="color:#FF8B8E">+4.6pt</span>','<span class="chip red">超标准</span>'],
+        ['小炒黄牛肉','<span class="tnum">142 份</span>','<span class="tnum">38.2%</span>','<span class="tnum">+0.8pt</span>','<span class="chip green">正常</span>'],
+        ['手工水饺','<span class="tnum">96 份</span>','<span class="tnum">31.4%</span>','<span class="tnum">-1.2pt</span>','<span class="chip green">正常</span>']
+      ]
+    }
+  }
+
+};
+
+
+var ec = window.echarts;
+var charts = {};
+var AXIS = { color:'#5B6E88', fontSize:11 };
+var LINE = 'rgba(88,160,210,.14)';
+
+function mk(id, opt){
+  if(!ec) { fallback(id); return; }
+  var el = document.getElementById(id);
+  if(!el) return;
+  var c = charts[id];
+  if(!c){ c = ec.init(el); charts[id] = c; }
+  c.setOption(opt, true);
+}
+
+function fallback(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = '<div class="fallback">图表组件未加载（需联网首次加载 ECharts）<br>关键数据已在页面其他区域完整呈现</div>';
+}
+
+function resizeAll(){
+  Object.keys(charts).forEach(function(k){ charts[k].resize(); });
+}
+
+function optHealth(v){
+  return {
+    series:[{
+      type:'gauge', startAngle:220, endAngle:-40, min:0, max:100,
+      radius:'96%', center:['50%','58%'],
+      progress:{show:true, width:11, roundCap:true, itemStyle:{color:'#22D3EE'}},
+      axisLine:{lineStyle:{width:11, color:[[1,'rgba(88,160,210,.13)']]}},
+      pointer:{show:false}, axisTick:{show:false}, splitLine:{show:false}, axisLabel:{show:false},
+      anchor:{show:false},
+      detail:{
+        valueAnimation:true, offsetCenter:[0,'0%'],
+        formatter:function(v){ return '{v|'+v+'}{u| 分}'; },
+        rich:{ v:{fontSize:40, fontFamily:'ui-monospace,monospace', color:'#22D3EE', fontWeight:500},
+               u:{fontSize:13, color:'#8FA3BC', padding:[0,0,6,3]} }
+      },
+      data:[{value:v}]
+    }]
+  };
+}
+
+var PIE_COLORS = ['#22D3EE','#2DD4BF','#F0B95C','#7F77DD','#E24B4A'];
+
+function optSource(src){
+  var data = src.data.map(function(d, i){
+    return { value:d.value, name:d.name, itemStyle:{ color:PIE_COLORS[i % PIE_COLORS.length] } };
+  });
+  return {
+    tooltip:{trigger:'item', backgroundColor:'rgba(14,23,39,.96)', borderColor:'rgba(88,160,210,.3)',
+      textStyle:{color:'#DCE6F2', fontSize:12},
+      formatter:function(p){ return p.name + '：' + p.value + ' ' + (src.unit || '') + '（' + p.percent + '%）'; }},
+    legend:{orient:'vertical', right:6, top:'center', itemWidth:8, itemHeight:8, itemGap:13,
+      textStyle:{color:'#8FA3BC', fontSize:11.5}},
+    series:[{
+      type:'pie', radius:['54%','76%'], center:['35%','52%'], avoidLabelOverlap:true,
+      itemStyle:{borderColor:'#0A101C', borderWidth:3, borderRadius:3},
+      label:{show:true, position:'center', formatter:'{a|' + src.big + '}\n{b|' + src.small + '}',
+        rich:{a:{fontSize:26, fontFamily:'ui-monospace,monospace', color:'#DCE6F2', fontWeight:500},
+              b:{fontSize:11, color:'#5B6E88', padding:[6,0,0,0]}}},
+      emphasis:{label:{show:false}, scale:true, scaleSize:3},
+      labelLine:{show:false},
+      data:data
+    }]
+  };
+}
+
+function optTrend(tr){
+  return {
+    grid:{left:44, right:16, top:16, bottom:26},
+    tooltip:{trigger:'axis', backgroundColor:'rgba(14,23,39,.96)', borderColor:'rgba(88,160,210,.3)',
+      textStyle:{color:'#DCE6F2', fontSize:12}, axisPointer:{lineStyle:{color:'rgba(34,211,238,.4)'}},
+      formatter:function(ps){ return ps[0].axisValue + '<br/>' + tr.name + '：<b>' + ps[0].value + '</b>'; }},
+    xAxis:{type:'category', data:tr.labels,
+      axisLine:{lineStyle:{color:LINE}}, axisTick:{show:false},
+      axisLabel:{color:'#5B6E88', fontSize:11}},
+    yAxis:{type:'value', scale:true, splitLine:{lineStyle:{color:'rgba(88,160,210,.07)'}},
+      axisLabel:{color:'#5B6E88', fontSize:11}},
+    series:[{
+      type:'line', smooth:true, symbol:'circle', symbolSize:5, showSymbol:true,
+      data:tr.data,
+      lineStyle:{width:2, color:'#22D3EE'},
+      itemStyle:{color:'#22D3EE', borderColor:'#0A101C', borderWidth:2},
+      areaStyle:{color:new ec.graphic.LinearGradient(0,0,0,1,[
+        {offset:0, color:'rgba(34,211,238,.26)'},
+        {offset:1, color:'rgba(34,211,238,0)'}
+      ])}
+    }]
+  };
+}
+
+function deptColor(v){
+  if (v >= 88) return '#2DD4BF';
+  if (v >= 75) return '#F0B95C';
+  return '#F0555A';
+}
+
+function optDept(dep){
+  var rows = dep.data;
+  return {
+    grid:{left:58, right:44, top:12, bottom:8},
+    tooltip:{trigger:'axis', axisPointer:{type:'shadow'}, backgroundColor:'rgba(14,23,39,.96)',
+      borderColor:'rgba(88,160,210,.3)', textStyle:{color:'#DCE6F2', fontSize:12}},
+    xAxis:{type:'value', max:100, splitLine:{lineStyle:{color:'rgba(88,160,210,.07)'}},
+      axisLabel:{color:'#5B6E88', fontSize:11, formatter:'{value}%'}},
+    yAxis:{type:'category', data:rows.map(function(r){ return r.name; }),
+      axisLine:{show:false}, axisTick:{show:false},
+      axisLabel:{color:'#8FA3BC', fontSize:11.5}},
+    series:[{
+      type:'bar', barWidth:12,
+      data:rows.map(function(r){ return { value:r.value, itemStyle:{ color:deptColor(r.value) } }; }),
+      itemStyle:{borderRadius:[0,6,6,0]},
+      label:{show:true, position:'right', color:'#8FA3BC', fontSize:11, formatter:'{c}%'}
+    }]
+  };
+}
+
+function optDecide(){
+  return {
+    series:[{
+      type:'pie', radius:['60%','82%'], center:['50%','50%'],
+      silent:true,
+      itemStyle:{borderColor:'#0E1726', borderWidth:2},
+      label:{show:true, position:'center', formatter:'{a|3}\n{b|项建议}',
+        rich:{a:{fontSize:34, fontFamily:'ui-monospace,monospace', color:'#F0B95C', fontWeight:500},
+              b:{fontSize:11, color:'#5B6E88', padding:[6,0,0,0]}}},
+      data:[
+        {value:1, name:'客户', itemStyle:{color:'#F0555A'}},
+        {value:1, name:'投流', itemStyle:{color:'#F5A623'}},
+        {value:1, name:'项目', itemStyle:{color:'#F0B95C'}}
+      ]
+    }]
+  };
+}
+
+function optQuality(){
+  return {
+    grid:{left:34, right:16, top:16, bottom:26},
+    tooltip:{trigger:'axis', backgroundColor:'rgba(14,23,39,.96)', borderColor:'rgba(88,160,210,.3)',
+      textStyle:{color:'#DCE6F2', fontSize:12}},
+    xAxis:{type:'category', data:['企微','CRM','飞书','项目','财务'],
+      axisLine:{lineStyle:{color:LINE}}, axisTick:{show:false},
+      axisLabel:{color:'#5B6E88', fontSize:11}},
+    yAxis:{type:'value', max:100, splitLine:{lineStyle:{color:'rgba(88,160,210,.07)'}},
+      axisLabel:{color:'#5B6E88', fontSize:11, formatter:'{value}%'}},
+    series:[{
+      type:'bar', barWidth:20,
+      data:[
+        {value:94, itemStyle:{color:'#22D3EE'}},
+        {value:88, itemStyle:{color:'#22D3EE'}},
+        {value:81, itemStyle:{color:'#2DD4BF'}},
+        {value:76, itemStyle:{color:'#F0B95C'}},
+        {value:42, itemStyle:{color:'#F0555A'}}
+      ],
+      itemStyle:{borderRadius:[6,6,0,0]},
+      label:{show:true, position:'top', color:'#8FA3BC', fontSize:10.5, formatter:'{c}%'}
+    }]
+  };
+}
+
+var cur = 'trade';
+
+function lvlCls(lv){ return lv === 'h' ? 'h' : (lv === 'm' ? 'm' : 'l'); }
+function lvlTxt(lv){ return lv === 'h' ? '高危' : (lv === 'm' ? '关注' : '正常'); }
+
+function tblHTML(cfg){
+  var cols = cfg.cols.map(function(c){ return '<th>' + c + '</th>'; }).join('');
+  var rows = cfg.rows.map(function(r){
+    return '<tr>' + r.map(function(c){ return '<td>' + c + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  var foot = cfg.foot
+    ? '<div style="margin-top:13px;font-size:11.5px;color:var(--tx3);line-height:1.8">' + cfg.foot + '</div>'
+    : '';
+  return '<div class="card">' +
+    '<div class="card-head"><span class="card-t">' + cfg.title + '</span>' +
+    '<span class="card-note">' + cfg.note + '</span></div>' +
+    '<table class="tl"><thead><tr>' + cols + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    foot + '</div>';
+}
+
+function briefHTML(p){
+  var focus = p.focus.map(function(k){
+    return '<div class="kpi">' +
+      '<div class="kpi-l"><i style="background:' + k.color + '"></i>' + k.l + '</div>' +
+      '<div class="kpi-v" style="color:' + k.color + '">' + k.v + '<small>' + k.u + '</small></div>' +
+      '<div class="kpi-d">' + k.d + '</div></div>';
+  }).join('');
+
+  var items = p.items.map(function(it){
+    return '<tr>' +
+      '<td><span class="lvl ' + lvlCls(it.lv) + '">' + lvlTxt(it.lv) + '</span></td>' +
+      '<td>' + it.t + '</td>' +
+      '<td class="tnum">' + it.d + '</td>' +
+      '<td style="color:var(--tx2)">' + it.a + '</td>' +
+      '<td class="tnum">' + it.m + '</td></tr>';
+  }).join('');
+
+  var dims = p.dims.map(function(d){
+    return '<div style="display:flex;align-items:center;gap:10px;font-size:12px">' +
+      '<span style="width:44px;color:var(--tx3)">' + d.k + '</span>' +
+      '<div class="bar-wrap" style="flex:1"><div class="' + (d.c || 'bar') + '" style="width:' + d.v + '%"></div></div>' +
+      '<span class="tnum" style="width:26px;text-align:right">' + d.v + '</span></div>';
+  }).join('');
+
+  return [
+    '<div class="grid g4">' + focus + '</div>',
+    '<div class="grid g-2-1 mt14">',
+      '<div class="card">',
+        '<div class="card-head"><span class="card-t">今日重点事项</span>',
+        '<span class="card-note">系统已按影响排序，只需看这 ' + p.items.length + ' 条</span></div>',
+        '<table class="tl"><thead><tr>',
+          '<th style="width:52px">级别</th><th>事项</th><th style="width:88px">责任部门</th>',
+          '<th>今日动作</th><th style="width:92px">影响</th>',
+        '</tr></thead><tbody>' + items + '</tbody></table>',
+      '</div>',
+      '<div class="card">',
+        '<div class="card-head"><span class="card-t">经营健康度</span><span class="card-note">近 30 天</span></div>',
+        '<div id="chartHealth" class="chart" style="height:186px"></div>',
+        '<div style="margin-top:6px;display:flex;flex-direction:column;gap:11px">' + dims + '</div>',
+      '</div>',
+    '</div>',
+    '<div class="card mt14 hero-card">',
+      '<div style="display:flex;gap:14px;align-items:flex-start">',
+        '<div style="width:2px;align-self:stretch;background:var(--gold);border-radius:2px;flex:0 0 2px"></div>',
+        '<div>',
+          '<div style="font-size:13px;font-weight:500;color:var(--gold);margin-bottom:7px">AI 一句话总结</div>',
+          '<div style="font-size:13px;line-height:1.95;color:var(--tx2)">' + p.hero + '</div>',
+        '</div>',
+      '</div>',
+    '</div>'
+  ].join('');
+}
+
+function srcHTML(p){
+  return p.sources.map(function(x){
+    var dot = x.st === 'on' ? 'on' : (x.st === 'wait' ? 'wait' : 'off');
+    var chip = x.st === 'on' ? '<span class="chip green">已接入</span>'
+             : (x.st === 'wait' ? '<span class="chip amber">待接入</span>'
+             : '<span class="chip">暂未启用</span>');
+    return '<div class="src"><span class="src-dot ' + dot + '"></span>' +
+      '<div style="flex:1"><div style="font-size:13px;margin-bottom:4px">' + x.n + '</div>' +
+      '<div style="font-size:11.5px;color:var(--tx3)">' + x.d + '</div></div>' + chip + '</div>';
+  }).join('');
+}
+
+function decideHTML(p){
+  var cards = p.decide.map(function(d, i){
+    return '<div class="sug">' +
+      '<div class="sug-h">' +
+        '<span class="sug-idx">0' + (i + 1) + '</span>' +
+        '<span class="sug-t">' + d.t + '</span>' +
+        '<span class="chip amber" style="margin-left:auto">待确认</span>' +
+      '</div>' +
+      '<div class="sug-m">' + d.m + '</div>' +
+      '<div class="sug-a">' +
+        '<button class="btn">' + d.a[0] + '</button>' +
+        '<button class="btn ghost">' + d.a[1] + '</button>' +
+      '</div></div>';
+  }).join('');
+
+  return [
+    '<div class="grid g-2-1">',
+      '<div style="display:flex;flex-direction:column;gap:13px">' + cards + '</div>',
+      '<div style="display:flex;flex-direction:column;gap:13px">',
+        '<div class="card">',
+          '<div class="card-head"><span class="card-t">今日行动建议</span></div>',
+          '<div id="chartDecide" class="chart" style="height:190px"></div>',
+          '<div style="font-size:11.5px;color:var(--tx3);line-height:1.85;text-align:center;margin-top:4px">',
+            '识别异常 <b style="color:var(--cyan);font-weight:500">' + p.decide.length + '</b> 项 · 已自动分配责任人',
+          '</div>',
+        '</div>',
+        '<div class="card">',
+          '<div class="card-head"><span class="card-t">偏好学习</span><span class="card-note">已更新 2 次</span></div>',
+          '<div style="font-size:12px;color:var(--tx2);line-height:1.9;margin-bottom:14px">',
+            '你点「同意」，相关建议权重上升；点「不同意」，系统减少同类推送。用得越久，推给你的越准。',
+          '</div>',
+          '<div style="display:flex;flex-direction:column;gap:9px;font-size:11.5px">',
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border-radius:7px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.16)">',
+              '<span style="color:var(--tx2)">重点事项回访安排</span><span class="chip green">优先级提升</span></div>',
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border-radius:7px;background:rgba(240,85,90,.05);border:1px solid rgba(240,85,90,.15)">',
+              '<span style="color:var(--tx2)">成本异常类建议</span><span class="chip red">推送频次降低</span></div>',
+          '</div>',
+        '</div>',
+      '</div>',
+    '</div>'
+  ].join('');
+}
+
+function wxHTML(p){
+  var m = p.mobile;
+  var rows = m.rows.map(function(r){
+    return '<div class="wx-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>';
+  }).join('');
+  var risks = m.risks.map(function(r){
+    return '<div class="wx-row"><span>' + r[0] + '<span class="wx-tag">' + r[1] + '</span></span><b>' + r[2] + '</b></div>';
+  }).join('');
+  return '<div class="wx-h">' + p.brand + ' · 今日战报</div>' +
+    '<div class="wx-sub">10月30日 08:30 · 自动生成</div>' +
+    rows +
+    '<div class="wx-line"></div>' + risks +
+    '<div class="wx-btn">查看完整驾驶舱</div>';
+}
+
+function ovHTML(p){
+  var kpis = p.ovKpi.map(function(k){
+    return '<div class="kpi">' +
+      '<div class="kpi-l"><i style="background:' + k.color + '"></i>' + k.l + '</div>' +
+      '<div class="kpi-v" style="color:' + k.color + '">' + k.v + (k.u ? '<small>' + k.u + '</small>' : '') + '</div>' +
+      '<div class="kpi-d">' + k.d + '</div></div>';
+  }).join('');
+
+  return [
+    '<div class="grid g4">' + kpis + '</div>',
+    '<div class="grid g1-2 mt14">',
+      '<div class="card">',
+        '<div class="card-head"><span class="card-t">结构分析</span>',
+        '<span class="card-note">今日 ' + p.source.big + ' ' + p.source.unit + '</span></div>',
+        '<div id="chartSource" class="chart" style="height:200px"></div>',
+      '</div>',
+      '<div class="card">',
+        '<div class="card-head"><span class="card-t">近 7 日趋势</span>',
+        '<span class="card-note">数据源：业务系统同步 · 每日 08:50</span></div>',
+        '<div id="chartTrend" class="chart" style="height:200px"></div>',
+      '</div>',
+    '</div>',
+    '<div class="grid g-2-1 mt14">',
+      tblHTML(p.t1),
+      '<div class="card">',
+        '<div class="card-head"><span class="card-t">部门任务进度</span><span class="card-note">本周</span></div>',
+        '<div id="chartDept" class="chart" style="height:196px"></div>',
+        '<div style="margin-top:10px;display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);border-top:1px solid var(--line);padding-top:12px">',
+          '<span>数据来源</span><span style="color:var(--tx2)">任务系统自动汇总</span>',
+        '</div>',
+      '</div>',
+    '</div>',
+    '<div class="mt14">' + tblHTML(p.t2) + '</div>'
+  ].join('');
+}
+
+function renderNotices(p){
+  var body = document.getElementById('drawerBody');
+  var yest = document.getElementById('ntYest');
+  if(!yest) return;
+
+  var node = yest.previousElementSibling;
+  while(node && !node.classList.contains('nt-day')){
+    var prev = node.previousElementSibling;
+    node.parentNode.removeChild(node);
+    node = prev;
+  }
+
+  var today = body.querySelector('.nt-day');
+  var html = '';
+  p.items.slice(0, 3).forEach(function(it, i){
+    var t = it.lv === 'h' ? 'red' : (it.lv === 'm' ? 'amber' : 'cyan');
+    html += '<div class="nt unread" data-go="brief">' +
+      '<div class="nt-ic ' + t + '">' + NT_ICON[t] + '</div>' +
+      '<div class="nt-b"><div class="nt-t">' + it.t + '</div>' +
+      '<div class="nt-m">' + it.d + ' · ' + it.a + ' · 影响 ' + it.m + '</div></div>' +
+      '<div class="nt-time">08:3' + i + '</div></div>';
+  });
+  html += '<div class="nt" data-go="order"><div class="nt-ic green">' + NT_ICON.green + '</div>' +
+    '<div class="nt-b"><div class="nt-t">张三已接收任务并开始执行</div>' +
+    '<div class="nt-m">已确认收到 · 预计今日 16:00 完成 · 系统将持续跟进</div></div>' +
+    '<div class="nt-time">10:42</div></div>';
+  html += '<div class="nt" data-go="order"><div class="nt-ic cyan">' + NT_ICON.cyan + '</div>' +
+    '<div class="nt-b"><div class="nt-t">运营已提交调整方案</div>' +
+    '<div class="nt-m">11:58 提交 · 等待你审批</div></div>' +
+    '<div class="nt-time">11:58</div></div>';
+  today.insertAdjacentHTML('afterend', html);
+
+  var ds = p.dept.data;
+  if(ds && ds.length){
+    var low = ds.reduce(function(a, b){ return b.value < a.value ? b : a; });
+    var sum = ds.reduce(function(a, b){ return a + b.value; }, 0);
+    var avg = Math.round(sum / ds.length);
+    var tEl = document.getElementById('ntDeptT');
+    var mEl = document.getElementById('ntDeptM');
+    if(tEl) tEl.textContent = '本周任务完成率 ' + avg + '%';
+    if(mEl) mEl.textContent = low.name + '偏低（' + low.value + '%）· 已推送部门负责人';
+  }
+  updateUnread();
+}
+
+function disposeCharts(){
+  Object.keys(charts).forEach(function(k){
+    try { charts[k].dispose(); } catch(e){}
+    delete charts[k];
+  });
+}
+
+function paint(){
+  var p = PRESETS[cur];
+  document.getElementById('brandSub').textContent = p.brand + ' · ' + p.size;
+  document.getElementById('healthBadge').textContent = p.health;
+  document.getElementById('briefBody').innerHTML = briefHTML(p);
+  document.getElementById('ovBody').innerHTML = ovHTML(p);
+  document.getElementById('decideBody').innerHTML = decideHTML(p);
+  document.getElementById('wxCard').innerHTML = wxHTML(p);
+  renderNotices(p);
+  document.getElementById('srcBody').innerHTML = srcHTML(p);
+  document.getElementById('metricHint').textContent = p.metric;
+  document.getElementById('srcCount').textContent = p.sources.length + ' 个源';
+
+  disposeCharts();
+  mounted = {};
+  var active = document.querySelector('.view.active').id.replace('v-', '');
+  if (VIEW_CHARTS[active]) { VIEW_CHARTS[active](); mounted[active] = true; }
+}
+
+var seg = document.getElementById('seg');
+seg.addEventListener('click', function(e){
+  var b = e.target.closest('.seg-i');
+  if(!b || b.dataset.p === cur) return;
+  Array.prototype.forEach.call(seg.children, function(x){ x.classList.remove('active'); });
+  b.classList.add('active');
+  cur = b.dataset.p;
+  paint();
+  toast('已切换数据模型：' + PRESETS[cur].tag);
+});
+
+var VIEW_CHARTS = {
+  brief: function(){ mk('chartHealth', optHealth(PRESETS[cur].health)); },
+  overview: function(){
+    var p = PRESETS[cur];
+    mk('chartSource', optSource(p.source));
+    mk('chartTrend', optTrend(p.trend));
+    mk('chartDept', optDept(p.dept));
+  },
+  decide: function(){ mk('chartDecide', optDecide()); },
+  source: function(){ mk('chartQuality', optQuality()); }
+};
+
+var nav = document.getElementById('nav');
+var scroll = document.getElementById('scroll');
+var mounted = {};
+
+nav.addEventListener('click', function(e){
+  var btn = e.target.closest('.nav-item');
+  if(!btn) return;
+  var v = btn.dataset.view;
+
+  Array.prototype.forEach.call(nav.children, function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  Array.prototype.forEach.call(document.querySelectorAll('.view'), function(s){ s.classList.remove('active'); });
+  document.getElementById('v-' + v).classList.add('active');
+
+  document.getElementById('pageTitle').textContent = TITLES[v][0];
+  document.getElementById('pageSub').textContent = TITLES[v][1];
+  scroll.scrollTop = 0;
+
+  requestAnimationFrame(function(){
+    if(!mounted[v] && VIEW_CHARTS[v]){ VIEW_CHARTS[v](); mounted[v] = true; }
+    resizeAll();
+  });
+});
+
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+
+var mask = document.getElementById('mask');
+var drawer = document.getElementById('drawer');
+var bellDot = document.getElementById('bellDot');
+var drawerCount = document.getElementById('drawerCount');
+var drawerBody = document.getElementById('drawerBody');
+
+function openDrawer(){ mask.classList.add('show'); drawer.classList.add('show'); }
+function closeDrawer(){ mask.classList.remove('show'); drawer.classList.remove('show'); }
+
+document.getElementById('bellBtn').addEventListener('click', openDrawer);
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+mask.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDrawer(); });
+
+function updateUnread(){
+  var n = document.querySelectorAll('.nt.unread').length;
+  bellDot.textContent = n;
+  bellDot.classList.toggle('hide', n === 0);
+  drawerCount.textContent = n ? n + ' 条未读' : '全部已读';
+}
+
+document.getElementById('readAll').addEventListener('click', function(){
+  Array.prototype.forEach.call(document.querySelectorAll('.nt.unread'), function(n){
+    n.classList.remove('unread');
+  });
+  updateUnread();
+  toast('全部通知已标记为已读');
+});
+
+drawerBody.addEventListener('click', function(e){
+  var it = e.target.closest('.nt');
+  if(!it) return;
+  it.classList.remove('unread');
+  updateUnread();
+  var go = it.dataset.go;
+  if(go){
+    var btn = document.querySelector('.nav-item[data-view="' + go + '"]');
+    if(btn) btn.click();
+    closeDrawer();
+  }
+});
+
+document.getElementById('goSetting').addEventListener('click', function(){
+  var btn = document.querySelector('.nav-item[data-view="notice"]');
+  if(btn) btn.click();
+  closeDrawer();
+});
+
+var NT_ICON = {
+  red: '<svg viewBox="0 0 24 24"><path d="M12 4.5l8.5 15h-17l8.5-15z"/><path d="M12 10v4M12 16.6v.1"/></svg>',
+  amber: '<svg viewBox="0 0 24 24"><path d="M4 18V9M9.3 18V5M14.7 18v-6M20 18v-9"/></svg>',
+  cyan: '<svg viewBox="0 0 24 24"><path d="M4 12h14M13 7l5 5-5 5"/></svg>',
+  green: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.2l2.5 2.5 4.7-5.2"/></svg>'
+};
+
+function nowTime(){
+  var d = new Date();
+  function p(n){ return n < 10 ? '0' + n : '' + n; }
+  return p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function addNotice(title, desc, type, go){
+  var el = document.createElement('div');
+  el.className = 'nt unread';
+  el.dataset.go = go || '';
+  el.innerHTML =
+    '<div class="nt-ic ' + type + '">' + NT_ICON[type] + '</div>' +
+    '<div class="nt-b"><div class="nt-t">' + title + '</div><div class="nt-m">' + desc + '</div></div>' +
+    '<div class="nt-time">' + nowTime() + '</div>';
+
+  var day = drawerBody.querySelector('.nt-day');
+  drawerBody.insertBefore(el, day ? day.nextSibling : drawerBody.firstChild);
+  updateUnread();
+
+  bellDot.classList.remove('pop');
+  void bellDot.offsetWidth;
+  bellDot.classList.add('pop');
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('.sw'), function(sw){
+  sw.addEventListener('click', function(){
+    sw.classList.toggle('on');
+    var r = sw.closest('.rule');
+    var name = r ? r.querySelector('.rule-t').textContent.replace(/(高危|关注|提醒|催办|固定)/g, '').trim() : '规则';
+    toast(sw.classList.contains('on') ? '已开启：' + name : '已关闭：' + name);
+  });
+});
+
+document.getElementById('decideBody').addEventListener('click', function(e){
+  var btn = e.target.closest('.btn');
+  if(!btn) return;
+  var card = btn.closest('.sug');
+  if(!card || card.classList.contains('done')) return;
+
+  (function(){
+    {
+      var isNo = btn.classList.contains('ghost');
+      card.classList.add('done');
+      var acts = card.querySelectorAll('.btn');
+      Array.prototype.forEach.call(acts, function(b){ b.disabled = true; });
+      var tag = card.querySelector('.chip');
+      tag.textContent = isNo ? '已驳回' : '已同意';
+      tag.className = 'chip ' + (isNo ? 'red' : 'green');
+      toast(isNo ? '已记录：减少同类建议推送' : '已确认，指令已下发至相关员工');
+
+      var title = card.querySelector('.sug-t').textContent;
+      if(isNo){
+        addNotice('建议已驳回：' + title, '已降低此类建议的推送频次', 'amber', 'decide');
+      } else {
+        addNotice('已确认：' + title, '任务已下发，相关员工已收到通知', 'green', 'order');
+      }
+    }
+  })();
+});
+
+var input = document.getElementById('cmdInput');
+var cmdBtn = document.getElementById('cmdBtn');
+
+document.querySelectorAll('.quick').forEach(function(b){
+  b.addEventListener('click', function(){ input.value = b.textContent.trim(); input.focus(); });
+});
+
+cmdBtn.addEventListener('click', function(){
+  var text = input.value.trim() || '这个客户移交给张三，让他今天把资料交接好';
+  cmdBtn.textContent = '解析中';
+  cmdBtn.disabled = true;
+
+  setTimeout(function(){
+    var list = document.getElementById('taskList');
+    var el = document.createElement('div');
+    el.className = 'task';
+    el.innerHTML =
+      '<div class="task-ic"><svg viewBox="0 0 24 24"><path d="M7 20V9l5-5 5 5v11"/><path d="M4 20h16"/></svg></div>' +
+      '<div class="task-b">' +
+        '<div class="task-t">AI 解析 · 新增任务</div>' +
+        '<div class="task-m">原始指令：<span>' + text.replace(/[<>&]/g,'') + '</span><br>' +
+        '已识别负责人 <span>张三</span> · 截止 <span>今日 18:00</span> · 通知已发送至企业微信</div>' +
+      '</div>' +
+      '<span class="chip cyan">已下发</span>';
+
+    list.insertBefore(el, list.firstChild);
+    document.getElementById('taskCount').textContent = (list.children.length) + ' 项进行中';
+
+    input.value = '';
+    cmdBtn.textContent = '下达指令';
+    cmdBtn.disabled = false;
+    toast('已拆解为 1 项任务，通知已发送');
+    addNotice('指令已下达 · 1 项任务', '负责人张三已收到企业微信通知，2 小时未确认将自动追问', 'cyan', 'order');
+  }, 700);
+});
+
+window.addEventListener('resize', resizeAll);
+
+window.addEventListener('load', function(){
+  paint();
+  updateUnread();
+});
+</script>
+</body>
+</html>

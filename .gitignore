@@ -1,0 +1,11 @@
+# WorkBuddy 项目数据（非产品代码）
+.workbuddy/
+
+# 操作系统 / 临时
+.DS_Store
+Thumbs.db
+*.log
+/tmp/
+
+# 本地服务日志
+ceo_server.log
