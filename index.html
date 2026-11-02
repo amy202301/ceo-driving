@@ -262,6 +262,29 @@ td.tnum{font-family:var(--mono);font-size:12.5px;color:var(--tx2)}
 .wx-btn{margin-top:11px;text-align:center;font-size:11.5px;color:#1B7CE6;border:1px solid #DCE3EC;border-radius:6px;padding:8px;background:#FAFBFC}
 .wx-time{font-size:9.5px;color:#B0B5BC;text-align:center;margin-top:12px}
 </style>
+<style>
+.ai-card{border-color:rgba(34,211,238,.22)!important;background:linear-gradient(180deg,rgba(34,211,238,.05),rgba(12,19,33,.7))!important}
+.ask-row{display:flex;gap:8px;margin-bottom:10px}
+.ask-input{flex:1;height:38px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--tx);font-size:13px;outline:none}
+.ask-input:focus{border-color:var(--cyan)}
+.ask-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.ask-chip{font-size:11.5px;padding:5px 10px;border-radius:14px;border:1px solid var(--line);color:var(--tx2);cursor:pointer;background:rgba(255,255,255,.03);white-space:nowrap}
+.ask-chip:hover{border-color:var(--cyan);color:var(--cyan)}
+.ask-ans{font-size:13px;line-height:1.95;color:var(--tx2);min-height:20px;white-space:pre-wrap}
+.ai-gear{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--tx2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:6px}
+.ai-gear:hover{border-color:var(--cyan);color:var(--cyan)}
+.ai-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:90}
+.ai-overlay.show{display:flex}
+.ai-modal{width:min(450px,92vw);background:#0f1a2b;border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.ai-modal h3{font-size:15px;margin:0 0 5px;color:var(--tx)}
+.ai-modal .sub{font-size:11.5px;color:var(--tx3);margin-bottom:15px;line-height:1.75}
+.ai-f{margin-bottom:12px}
+.ai-f label{display:block;font-size:11.5px;color:var(--tx3);margin-bottom:5px}
+.ai-f input{width:100%;height:36px;padding:0 11px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--tx);font-size:13px;outline:none;box-sizing:border-box}
+.ai-f input:focus{border-color:var(--cyan)}
+.ai-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+.ai-tip{font-size:11px;color:var(--tx3);margin-top:12px;line-height:1.75}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1449,11 +1472,12 @@ function briefHTML(p){
       '<div style="display:flex;gap:14px;align-items:flex-start">',
         '<div style="width:2px;align-self:stretch;background:var(--gold);border-radius:2px;flex:0 0 2px"></div>',
         '<div>',
-          '<div style="font-size:13px;font-weight:500;color:var(--gold);margin-bottom:7px">AI 一句话总结</div>',
-          '<div style="font-size:13px;line-height:1.95;color:var(--tx2)">' + p.hero + '</div>',
+          '<div style="font-size:13px;font-weight:500;color:var(--gold);margin-bottom:7px">AI 实时洞察 · 数据自动生成</div>',
+          '<div style="font-size:13px;line-height:1.95;color:var(--tx2)">' + (genInsight(p) || p.hero) + '</div>',
         '</div>',
       '</div>',
-    '</div>'
+    '</div>',
+    askCardHTML()
   ].join('');
 }
 
@@ -1627,6 +1651,9 @@ function paint(){
   document.getElementById('srcBody').innerHTML = srcHTML(p);
   document.getElementById('metricHint').textContent = p.metric;
   document.getElementById('srcCount').textContent = p.sources.length + ' 个源';
+
+  var st = document.getElementById('aiStatus');
+  if (st) { var _c = loadAIConfig(); st.textContent = (_c && _c.key) ? ('云端模型已接入 · ' + (_c.model || '')) : '本地推理引擎（离线）'; }
 
   disposeCharts();
   mounted = {};
@@ -1847,6 +1874,220 @@ window.addEventListener('load', function(){
   paint();
   updateUnread();
 });
+
+/* ===================== AI 模型层（智能问数 + 实时洞察） ===================== */
+function genInsight(p){
+  var items = p.items.slice();
+  var rank = { h:0, m:1, l:2 };
+  items.sort(function(a,b){ return (rank[a.lv]||3) - (rank[b.lv]||3); });
+  var risks = items.filter(function(it){ return it.lv !== 'l'; }).slice(0, 2);
+  var parts = [];
+  parts.push('今天经营健康度 ' + p.health + ' 分。');
+  if (risks.length){
+    parts.push('有 ' + risks.length + ' 件事在影响经营：' + risks.map(function(it){
+      return it.t + (it.m && it.m !== '—' ? '（影响 ' + it.m + '）' : '');
+    }).join('；') + '。');
+  }
+  if (p.dept && p.dept.data && p.dept.data.length){
+    var ds = p.dept.data.slice().sort(function(a,b){ return a.value - b.value; });
+    parts.push(ds[0].name + ' 完成率最低（' + ds[0].value + '%），已推送负责人。');
+  }
+  var off = (p.sources || []).filter(function(s){ return s.st === 'off' || s.st === 'wait'; });
+  if (off.length){
+    parts.push('还有 ' + off.length + ' 个数据源未完全接入（' + off.map(function(s){ return s.n; }).join('、') + '），相关指标待补全。');
+  }
+  var good = items.filter(function(it){ return it.lv === 'l'; })[0];
+  if (good){ parts.push('好消息：' + good.t + '。'); }
+  return parts.join('');
+}
+
+function askCardHTML(){
+  return '<div class="card mt14 ai-card">' +
+    '<div class="card-head"><span class="card-t">AI 智能问数</span>' +
+      '<span class="card-note" id="aiStatus">本地推理引擎</span>' +
+      '<button class="ai-gear" id="aiGear" title="接入云端大模型">' +
+        '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>' +
+      '</button>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--tx3);margin-bottom:10px">用大白话问经营，AI 基于当前数据作答。未配密钥时由<b style="color:var(--cyan)">本地推理引擎</b>离线回答；配置密钥后直连云端大模型。</div>' +
+    '<div class="ask-row">' +
+      '<input id="askInput" class="ask-input" placeholder="例如：今天最该盯哪件事？为什么回款慢？哪个部门拖后腿？" />' +
+      '<button class="btn" id="askSend">问 AI</button>' +
+    '</div>' +
+    '<div class="ask-chips">' +
+      '<span class="ask-chip">今天最该关注什么</span>' +
+      '<span class="ask-chip">为什么回款慢</span>' +
+      '<span class="ask-chip">哪个部门拖后腿</span>' +
+      '<span class="ask-chip">有什么风险</span>' +
+      '<span class="ask-chip">给我今日建议</span>' +
+    '</div>' +
+    '<div class="ask-ans" id="askAns"><span style="color:var(--tx3)">回答会显示在这里。</span></div>' +
+  '</div>';
+}
+
+function ruleAnswer(q, p){
+  q = (q || '').toLowerCase();
+  var items = p.items || [];
+  var highs = items.filter(function(it){ return it.lv === 'h'; });
+  var meds  = items.filter(function(it){ return it.lv === 'm'; });
+  var risks = highs.concat(meds);
+
+  if (p.dept && p.dept.data && p.dept.data.length){
+    var ds = p.dept.data.slice().sort(function(a,b){ return a.value - b.value; });
+    var lowD = ds[0], hiD = ds[ds.length - 1];
+    if (q.indexOf('部门') > -1 || q.indexOf('拖') > -1 || q.indexOf('谁') > -1){
+      return p.brand + ' 本周 ' + lowD.name + ' 完成率最低，只有 ' + lowD.value + '%，比最高的 ' + hiD.name + '（' + hiD.value + '%）低 ' + (hiD.value - lowD.value) + ' 个百分点。建议今天先盯 ' + lowD.name + '，系统已自动推送负责人。';
+    }
+  }
+  if (q.indexOf('回款') > -1 || q.indexOf('钱') > -1 || q.indexOf('流水') > -1 || q.indexOf('财务') > -1){
+    var fin = items.filter(function(it){ return /万|元|¥|回款|金额|财务/.test((it.m||'') + it.t + it.d); });
+    var srcFin = (p.sources || []).filter(function(s){ return /财务|银行/.test(s.n); });
+    var offFin = srcFin.filter(function(x){ return x.st !== 'on'; });
+    var msg = '财务视角：' + (fin.length ? fin.map(function(it){ return it.t + '（' + it.m + '）'; }).join('；') : '暂无重点财务事项。');
+    if (offFin.length){
+      var stTxt = offFin[0].st === 'wait' ? '待接入' : '未启用';
+      msg += ' 另：' + offFin.map(function(x){ return x.n; }).join('、') + ' 尚未完全接入（' + stTxt + '），回款类指标还在补全。';
+    }
+    return msg;
+  }
+  if (q.indexOf('客户') > -1 || q.indexOf('跟进') > -1 || q.indexOf('流失') > -1){
+    var cust = items.filter(function(it){ return /客户|跟进|流失|商贸|订单|认购/.test(it.t + it.d + it.a); });
+    if (cust.length) return '客户侧：' + cust.map(function(it){ return it.t + '（' + it.m + '）— ' + it.a; }).join('；') + '。';
+    return '当前没有标记为客户风险的重点事项。';
+  }
+  if (q.indexOf('风险') > -1 || q.indexOf('异常') > -1 || q.indexOf('预警') > -1){
+    if (risks.length) return '我扫了今日数据，发现 ' + risks.length + ' 项需关注：' + risks.map(function(it){ return '【' + (it.lv === 'h' ? '高' : '中') + '】' + it.t + '（影响 ' + it.m + '）'; }).join('；') + '。';
+    return '目前没有高风险事项，经营平稳。';
+  }
+  if (q.indexOf('为什么') > -1 || q.indexOf('原因') > -1 || q.indexOf('怎么') > -1){
+    var top = risks[0];
+    if (top) return '关于「' + top.t + '」：' + top.d + '。系统建议动作：' + top.a + '。影响面 ' + top.m + '。';
+    return '从当前数据看，整体节奏正常，没有需要特别解释下滑的事项。';
+  }
+  if (q.indexOf('建议') > -1 || q.indexOf('优先') > -1 || q.indexOf('今天') > -1 || q.indexOf('先做') > -1){
+    var acts = risks.slice(0, 3);
+    if (acts.length) return '今天建议你优先处理这 ' + acts.length + ' 件：' + acts.map(function(it, i){ return (i + 1) + '. ' + it.t + ' → ' + it.a; }).join('；') + '。其余可放一放。';
+    return '今天没有高优先级待办，按既定节奏推进即可。';
+  }
+  if (q.indexOf('健康') > -1 || q.indexOf('整体') > -1 || q.indexOf('怎么样') > -1 || q.indexOf('总结') > -1){
+    return genInsight(p);
+  }
+  return '我根据当前数据看了下：' + genInsight(p) + '\n你也可以问：今天最该关注什么 / 为什么回款慢 / 哪个部门拖后腿 / 有什么风险。';
+}
+
+function buildContext(p){
+  return JSON.stringify({
+    brand: p.brand, health: p.health, metric: p.metric,
+    focus: p.focus, items: p.items, trend: p.trend,
+    dept: p.dept, sources: p.sources, ovKpi: p.ovKpi, mobile: p.mobile, decide: p.decide
+  });
+}
+
+function loadAIConfig(){
+  try { return JSON.parse(localStorage.getItem('ceo_ai_cfg') || 'null'); } catch(e){ return null; }
+}
+function saveAIConfig(c){ try { localStorage.setItem('ceo_ai_cfg', JSON.stringify(c)); } catch(e){} }
+
+function llmCall(messages, c){
+  return fetch((c.base || 'https://api.openai.com/v1') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (c.key || '') },
+    body: JSON.stringify({ model: c.model || 'gpt-4o-mini', messages: messages, temperature: 0.3 })
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
+    return r.json();
+  }).then(function(d){
+    if (d.error) throw new Error(d.error.message || 'api error');
+    return (d.choices && d.choices[0]) ? d.choices[0].message.content : '(空返回)';
+  });
+}
+
+function askAI(q){
+  q = (q || '').trim();
+  var ans = document.getElementById('askAns');
+  if (!ans) return;
+  if (!q){ ans.innerHTML = '<span style="color:var(--tx3)">请先输入，或点上面的问题。</span>'; return; }
+  ans.innerHTML = '<span style="color:var(--cyan)">AI 正在分析当前数据…</span>';
+  var p = PRESETS[cur];
+  var c = loadAIConfig();
+  if (c && c.key){
+    var ctx = buildContext(p);
+    var messages = [
+      { role: 'system', content: '你是 ' + p.brand + ' 的经营决策顾问。只依据下面提供的「当前经营数据 JSON」用简体中文回答老板的问题，严禁编造数据以外的信息。回答要短（3-5 句），先给结论再给依据。\n\n数据：\n' + ctx },
+      { role: 'user', content: q }
+    ];
+    llmCall(messages, c).then(function(txt){
+      ans.textContent = txt;
+    }).catch(function(err){
+      ans.innerHTML = '<span style="color:#FF8B8E">云端模型调用失败（' + (err && err.message ? err.message : err) + '），已切回本地推理：</span><br>' + ruleAnswer(q, p);
+    });
+  } else {
+    setTimeout(function(){ ans.textContent = ruleAnswer(q, p); }, 200);
+  }
+}
+
+function openAiModal(){
+  var c = loadAIConfig() || {};
+  var b = document.getElementById('aiBase'), k = document.getElementById('aiKey'), m = document.getElementById('aiModel');
+  if (b) b.value = c.base || '';
+  if (k) k.value = c.key || '';
+  if (m) m.value = c.model || '';
+  var ov = document.getElementById('aiOverlay'); if (ov) ov.classList.add('show');
+}
+function closeAiModal(){
+  var ov = document.getElementById('aiOverlay'); if (ov) ov.classList.remove('show');
+}
+function saveAiConfigFromUI(){
+  var b = document.getElementById('aiBase').value.trim();
+  var k = document.getElementById('aiKey').value.trim();
+  var m = document.getElementById('aiModel').value.trim();
+  var c = { base: b || 'https://api.openai.com/v1', key: k, model: m || 'gpt-4o-mini' };
+  saveAIConfig(c);
+  var st = document.getElementById('aiStatus'); if (st) st.textContent = '云端模型已接入 · ' + c.model;
+  var test = document.getElementById('aiTest');
+  if (test) test.textContent = '已保存（本机）。点击下方可测试连接（需要网络）。';
+  if (k){
+    if (test) test.textContent = '正在测试连接…';
+    llmCall([{ role: 'user', content: 'ping' }], c).then(function(t){
+      if (test) test.textContent = '连接成功：模型返回「' + (t || '').slice(0, 30) + '」';
+    }).catch(function(e){
+      if (test) test.textContent = '连接失败：' + (e && e.message ? e.message : e) + '（配置已保存，可稍后重试）';
+    });
+  }
+  closeAiModal();
+  toast('模型配置已保存');
+}
+
+/* 事件委托：智能问数 + 模型设置 */
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest('#askSend')){ var inp = document.getElementById('askInput'); askAI(inp ? inp.value : ''); return; }
+  var chip = t.closest('.ask-chip');
+  if (chip){ var i = document.getElementById('askInput'); if (i){ i.value = chip.textContent; askAI(chip.textContent); } return; }
+  if (t.closest('#aiGear')){ openAiModal(); return; }
+  if (t.closest('#aiClose')){ closeAiModal(); return; }
+  if (t.id === 'aiOverlay'){ closeAiModal(); return; }
+  if (t.closest('#aiSave')){ saveAiConfigFromUI(); return; }
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && e.target && e.target.id === 'askInput'){ askAI(e.target.value); }
+});
 </script>
+<!-- AI 模型设置弹窗 -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-modal">
+    <h3>接入云端大模型</h3>
+    <div class="sub">配置后，「智能问数」会直连你指定的大模型（OpenAI 兼容接口）。密钥仅保存在本机浏览器 localStorage，不会上传到任何服务器。生产环境建议走服务器代理转发，避免密钥暴露在前端。</div>
+    <div class="ai-f"><label>接口地址 Base URL</label><input id="aiBase" placeholder="https://api.openai.com/v1"></div>
+    <div class="ai-f"><label>API Key</label><input id="aiKey" placeholder="sk-..." type="password"></div>
+    <div class="ai-f"><label>模型名</label><input id="aiModel" placeholder="gpt-4o-mini"></div>
+    <div class="ai-actions">
+      <button class="btn ghost" id="aiClose">取消</button>
+      <button class="btn" id="aiSave">保存并测试</button>
+    </div>
+    <div class="ai-tip" id="aiTest">未配置：当前使用本地推理引擎（离线可用，无需密钥）。</div>
+  </div>
+</div>
 </body>
 </html>
